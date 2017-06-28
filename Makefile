@@ -1,6 +1,6 @@
-PROJECT = emq_coap
-PROJECT_DESCRIPTION = CoAP Gateway
-PROJECT_VERSION = 2.2
+PROJECT = emq_lwm2m
+PROJECT_DESCRIPTION = LWM2M Gateway
+PROJECT_VERSION = 0.1
 
 DEPS = lager gen_coap
 dep_lager    = git https://github.com/basho/lager
@@ -14,7 +14,9 @@ ERLC_OPTS += +debug_info
 ERLC_OPTS += +'{parse_transform, lager_transform}'
 TEST_ERLC_OPTS += +'{parse_transform, lager_transform}'
 
+#NO_AUTOPATCH = gen_coap
+
 include erlang.mk
 
 app.config::
-	./deps/cuttlefish/cuttlefish -l info -e etc/ -c etc/emq_coap.conf -i priv/emq_coap.schema -d data
+	./deps/cuttlefish/cuttlefish -l info -e etc/ -c etc/emq_lwm2m.conf -i priv/emq_lwm2m.schema -d data
