@@ -32,8 +32,8 @@ start(_, <<"attacker">>, _, _) ->
     {stop, auth_failure};
 start(ClientId, Username, Password, _Channel) ->
     true = is_binary(ClientId),
-    true = ( is_binary(Username) or (Username == undefined) ),
-    true = ( is_binary(Password) or (Password == undefined) ),
+    (true = ( is_binary(Username)) orelse (Username == undefined) ),
+    (true = ( is_binary(Password)) orelse (Password == undefined) ),
     self() ! {keepalive, start, 10},
     {ok, []}.
 

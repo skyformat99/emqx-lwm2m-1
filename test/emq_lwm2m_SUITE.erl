@@ -41,12 +41,12 @@ end_per_suite(Config) ->
 
 case01_register(_Config) ->
     test_mqtt_broker:start_link(),
-    ok = application:start(emq_lwm2m),
+    {ok, _Started} = application:ensure_all_started(emq_lwm2m),
     timer:sleep(100),
 
     Epn = "urn:oma:lwm2m:oma:3",
     CoapSock = coap_client:open_udp("127.0.0.1", ?PORT),
-    Reply = coap_client:request(CoapSock, post, "coap://127.0.0.1/rd?ep="++Epn++"&lt=345&lwm2m=1", <<"</1>, </2>, </3>, </4>, </5>">>),
+    Reply = coap_client:request(CoapSock, post, "coap://127.0.0.1/rd?ep="++Epn++"&lt=345&lwm2m=1", #coap_content{format = <<"text/plain">>, payload = <<"</1>, </2>, </3>, </4>, </5>">>}),
     ?assertMatch({ok,created, _}, Reply),
     timer:sleep(50),
     SubTopic = list_to_binary("lwm2m/"++Epn++"/command"),

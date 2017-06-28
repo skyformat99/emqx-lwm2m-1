@@ -79,13 +79,13 @@ keepalive(ChId)->
 %% gen_server Callbacks
 %%--------------------------------------------------------------------
 
-init({CoapPid, ClientId, Username, Password, ChId}) ->
-    ?LOG(debug, "try to start adapter ClientId=~p, Username=~p, Password=~p, ChId=~p", [ClientId, Username, Password, ChId]),
-    case ?PROTO_INIT(ClientId, Username, Password, ChId) of
+init({CoapPid, ClientId, ChId}) ->
+    ?LOG(debug, "try to start adapter ClientId=~p, ChId=~p", [ClientId, ChId]),
+    case ?PROTO_INIT(ClientId, undefined, undefined, ChId) of
         {ok, Proto}           ->
-            Topic = <<<<"lwm2m/">>/binary, ClientId/binary, <<"/command">>>>,
+            Topic = <<"lwm2m/", ClientId/binary, "/command">>,
             NewProto = ?PROTO_SUBSCRIBE(Topic, Proto),
-            RspTopic = <<<<"lwm2m/">>/binary, ClientId/binary, <<"/response">>>>,
+            RspTopic = <<"lwm2m/", ClientId/binary, "/response">>,
             {ok, #state{coap_pid = CoapPid, proto = NewProto, peer = ChId, rsp_topic = RspTopic}};
         Other                 ->
             {stop, Other}

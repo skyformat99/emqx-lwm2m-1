@@ -25,7 +25,7 @@
 
 -behaviour(coap_resource).
 
--export([coap_discover/2, coap_get/4, coap_post/4, coap_put/4, coap_delete/3,
+-export([coap_discover/2, coap_get/4, coap_post/5, coap_put/5, coap_delete/3,
     coap_observe/4, coap_unobserve/1, handle_info/2, coap_ack/2]).
 
 -include("emq_lwm2m.hrl").
@@ -34,6 +34,8 @@
 
 -define(LOG(Level, Format, Args),
     lager:Level("LWM2M-REG: " ++ Format, Args)).
+
+-record(lwm2m_query, {epn, life_time, sms, lwm2m_ver}).
 
 
 % resource operations
@@ -47,37 +49,38 @@ coap_get(ChId, Prefix, Name, Query) ->
     ?LOG(error, "ignore bad put request ChId=~p, Prefix=~p, Name=~p, Query=~p", [ChId, Prefix, Name, Query]),
     {error, bad_request}.
 
-coap_post(ChId, [?LWM2M_REGISTER_PREFIX], Name, Content) ->
-    Epn      = proplists:get_value("ep", Name),
-    LifeTime = proplists:get_value("lt", Name),
-    Lwm2mVer = proplists:get_value("lwm2m", Name),
-    Binding  = proplists:get_value("b", Name),
-    ?LOG(debug, "~p REGISTER command Epn=~p, LifeTime=~p, Lwm2mVer=~p, Binding=~p, Content=~p", [ChId, Epn, LifeTime, Lwm2mVer, Binding, Content]),
+% LWM2M REGISTER COMMAND
+coap_post(ChId, [?LWM2M_REGISTER_PREFIX], Name, Query, Content) ->
+    #lwm2m_query{epn = Epn, lwm2m_ver = Ver, life_time = LifeTime} = parse_query(Query),
+    ?LOG(debug, "~p REGISTER command Name=~p, Query=~p, Content=~p", [ChId, Name, Query, Content]),
     % TODO: parse content
+    % TODO: check lwm2m version
     Location = emq_lwm2m_endpointname:register_name(Epn),
     emq_lwm2m_mqtt_adapter:start_link(self(), Epn, ChId),
-    {ok, created, list_to_binary(io_lib:format("/rd/~.16B", [Location]))};
-coap_post(ChId, [?LWM2M_REGISTER_PREFIX, Location], Name, Content) ->
+    {ok, created, #coap_content{payload = list_to_binary(io_lib:format("/rd/~.16B", [Location]))}};
+
+% LWM2M UPDATE COMMAND
+coap_post(ChId, [?LWM2M_REGISTER_PREFIX, Location], Name, Query, Content) ->
     LocationInt = binary_to_integer(Location, 16),
-    LifeTime = proplists:get_value("lt", Name),
-    Binding  = proplists:get_value("b", Name),
-    ?LOG(debug, "~p UPDATE command location=~p, LifeTime=~p, Binding=~p, Content=~p", [ChId, Location, LifeTime, Binding, Content]),
+    #lwm2m_query{epn = Epn, lwm2m_ver = Ver, life_time = LifeTime} = parse_query(Query),
+    ?LOG(debug, "~p UPDATE command location=~p, LifeTime=~p, Query=~p, Content=~p", [ChId, Location, LifeTime, Query, Content]),
     % TODO: update lifetime
     % TODO: parse content
-    {ok, changed, <<>>};
-coap_post(ChId, Prefix, Name, Content) ->
-    ?LOG(error, "bad post request ChId=~p, Prefix=~p, Name=~p, Content=~p", [ChId, Prefix, Name, Content]),
+    {ok, changed, #coap_content{}};
+coap_post(ChId, Prefix, Name, Query, Content) ->
+    ?LOG(error, "bad post request ChId=~p, Prefix=~p, Name=~p, Query=~p, Content=~p", [ChId, Prefix, Name, Query, Content]),
     {error, bad_request}.
 
-coap_put(_ChId, [?LWM2M_REGISTER_PREFIX], [Topic], #coap_content{payload = Payload}) ->
-    ?LOG(debug, "put message, Topic=~p, Payload=~p~n", [Topic, Payload]),
+coap_put(_ChId, [?LWM2M_REGISTER_PREFIX], [Topic], Query, #coap_content{payload = Payload}) ->
+    ?LOG(debug, "put message, Topic=~p, Query=~p, Payload=~p~n", [Topic, Query, Payload]),
     Pid = get(mqtt_client_pid),
     emq_lwm2m_mqtt_adapter:publish(Pid, Payload),
     ok;
-coap_put(_ChId, Prefix, Name, Content) ->
-    ?LOG(error, "put has error, Prefix=~p, Name=~p, Content=~p", [Prefix, Name, Content]),
+coap_put(_ChId, Prefix, Name, Query, Content) ->
+    ?LOG(error, "put has error, Prefix=~p, Name=~p, Query=~p, Content=~p", [Prefix, Name, Query, Content]),
     {error, bad_request}.
 
+% LWM2M DE-REGISTER COMMAND
 coap_delete(ChId, [?LWM2M_REGISTER_PREFIX, Location], _Name) ->
     LocationInt = binary_to_integer(Location, 16),
     ?LOG(debug, "~p DELETE command location=~p", [ChId, Location]),
@@ -110,9 +113,21 @@ handle_info(Message, State) ->
 coap_ack(_Ref, State) -> {ok, State}.
 
 
+parse_query(InputQuery) ->
+    parse_query(InputQuery, #lwm2m_query{}).
 
-
-
+parse_query([], Query=#lwm2m_query{}) ->
+    Query;
+parse_query([<<$e, $p, $=, Rest/binary>>|T], Query=#lwm2m_query{}) ->
+    parse_query(T, Query#lwm2m_query{epn = Rest});
+parse_query([<<$l, $t, $=, Rest/binary>>|T], Query=#lwm2m_query{}) ->
+    parse_query(T, Query#lwm2m_query{life_time = binary_to_integer(Rest)});
+parse_query([<<$l, $w, $m, $2, $m, $=, Rest/binary>>|T], Query=#lwm2m_query{}) ->
+    Version =   case catch binary_to_float(Rest) of
+                    {badarg, _} -> binary_to_integer(Rest);
+                    Value       -> Value
+                end,
+    parse_query(T, Query#lwm2m_query{lwm2m_ver = Version}).
 
 % end of file
 
