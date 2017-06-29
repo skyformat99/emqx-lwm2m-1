@@ -99,8 +99,11 @@ coap_unobserve({state, ChId, Prefix, Name}) ->
     ?LOG(error, "ignore unknown unobserve request ChId=~p, Prefix=~p, Name=~p", [ChId, Prefix, Name]),
     ok.
 
-handle_info({dispatch_command, Command}, _ObState) ->
-    {send_request, Command};
+handle_info({dispatch_command, CommandJson}, _ObState) ->
+    Command = jsx:decode(CommandJson, [return_maps]),
+    CoapRequest = emq_lwm2m_cmd_converter:mqtt_payload_to_coap_request(Command),
+    ?LOG(debug, "dispatch_command ~p CoapRequest=~p", [CommandJson, CoapRequest]),
+    {send_request, CoapRequest};
 
 handle_info({coap_response, ChId, _Channel, _Ref, Message}, ObState) ->
     emq_lwm2m_mqtt_adapter:publish(ChId, Message),

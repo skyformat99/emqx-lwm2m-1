@@ -137,7 +137,7 @@ handle_cast(Msg, State) ->
 handle_info({deliver, Msg = #mqtt_message{topic = TopicName, payload = Payload}},
              State = #state{proto = Proto, coap_pid = CoapPid}) ->
     %% handle PUBLISH from broker
-    ?LOG(debug, "deliver message from broker Topic=~p, Payload=~p", [TopicName, Payload]),
+    ?LOG(debug, "get message from broker Topic=~p, Payload=~p", [TopicName, Payload]),
     NewProto = ?PROTO_DELIVER_ACK(Msg, Proto),
     deliver_to_coap(Payload, CoapPid),
     {noreply, State#state{proto = NewProto}};
@@ -262,7 +262,7 @@ proto_deliver_ack(#mqtt_message{qos = ?QOS2, pktid = PacketId}, Proto) ->
 
 
 deliver_to_coap(Payload, CoapPid) ->
-    ?LOG(debug, "deliver_to_coap CoapPid=~p, Payload=~p", [CoapPid, Payload]),
+    ?LOG(debug, "deliver_to_coap CoapPid=~p (alive=~p), Payload=~p", [CoapPid, is_process_alive(CoapPid), Payload]),
     % TODO: convert json to lwm2m format
     CoapPid ! {dispatch_command, Payload}.
 

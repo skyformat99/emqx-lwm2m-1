@@ -27,7 +27,7 @@
 -include_lib("eunit/include/eunit.hrl").
 
 
-all() -> [case01_register].
+all() -> [case01_register, case10_read].
 
 
 
@@ -57,8 +57,39 @@ case01_register(_Config) ->
     test_mqtt_broker:stop().
 
 
+% TODO: case02_update(_Config)
 
 
+% TODO: case03_deregister(_Config)
+
+
+case10_read(_Config) ->
+    test_mqtt_broker:start_link(),
+    {ok, _Started} = application:ensure_all_started(emq_lwm2m),
+    timer:sleep(100),
+
+    Epn = "urn:oma:lwm2m:oma:3",
+    CoapSock = coap_client:open_udp("127.0.0.1", ?PORT),
+    Reply1 = coap_client:request(CoapSock, post, "coap://127.0.0.1/rd?ep="++Epn++"&lt=345&lwm2m=1", #coap_content{format = <<"text/plain">>, payload = <<"</1>, </2>, </3/0>, </4>, </5>">>}),
+    ?assertMatch({ok,created, _}, Reply1),
+    timer:sleep(50),
+    SubTopic = list_to_binary("lwm2m/"++Epn++"/command"),
+    ?assertEqual([SubTopic], test_mqtt_broker:get_subscrbied_topics()),
+
+
+    CommandTopic = <<"lwm2m/", (list_to_binary(Epn))/binary, "/command">>,
+    Command = [{<<"Command">>, <<"Read">>}, {<<"ObjectID">>, <<"Device">>}, {<<"ObjectInstance">>, 0}, {<<"ResourceID">>, <<"Manufacturer">>}],
+    CommandJson = jsx:encode(Command),
+    test_mqtt_broker:dispatch(CommandTopic, CommandJson, CommandTopic),
+    timer:sleep(50),
+    Reply1 = coap_client:read_request(CoapSock, 2000),
+    ?assertMatch({ok,created, _}, Reply1),
+    timer:sleep(50),
+
+
+    coap_client:close_udp(CoapSock),
+    ok = application:stop(emq_lwm2m),
+    test_mqtt_broker:stop().
 
 
 receive_notification() ->
