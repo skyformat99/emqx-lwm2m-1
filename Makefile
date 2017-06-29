@@ -6,7 +6,7 @@ DEPS = lager gen_coap jsx erlsom
 dep_lager    = git https://github.com/basho/lager
 dep_gen_coap = git https://github.com/grutabow/gen_coap  lwm2m
 dep_jsx      = git https://github.com/talentdeficit/jsx
-dep_erlsom   = https://github.com/willemdj/erlsom
+dep_erlsom   = git https://github.com/willemdj/erlsom
 
 BUILD_DEPS = emqttd cuttlefish
 dep_emqttd = git https://github.com/emqtt/emqttd emq22

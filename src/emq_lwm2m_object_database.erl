@@ -103,6 +103,8 @@ load(BaseDir) ->
     AllXmlFiles = filelib:wildcard(BaseDir++"/*.xml"),
     load_loop(AllXmlFiles).
 
+load_loop([]) ->
+    ok;
 load_loop([FileName|T]) ->
     Xml = load_xml(FileName),
     ObjectId = proplists:get_value("ObjectID", Xml),

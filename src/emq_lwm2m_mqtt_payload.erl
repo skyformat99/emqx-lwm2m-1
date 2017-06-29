@@ -35,18 +35,13 @@
 
 get_oid_rid(MqttPayload) ->
     ?LOG(debug, "get_oid_rid() MqttPayload=~p", [MqttPayload]),
-    ObjectId         = get(?OBJECT_ID, MqttPayload),
-    ObjectInstanceId = get(?OBJECT_INSTANCE_ID, MqttPayload),
-    ResourceId       = get(?RESOURCE_ID, MqttPayload),
+    ObjectId         = maps:get(?OBJECT_ID, MqttPayload, undefined),
+    ObjectInstanceId = maps:get(?OBJECT_INSTANCE_ID, MqttPayload, undefined),
+    ResourceId       = maps:get(?RESOURCE_ID, MqttPayload, undefined),
     {ObjectId, ObjectInstanceId, ResourceId}.
 
 
 
 
-get(Key, MqttPayload) ->
-    case maps:find(Key, MqttPayload) of
-        {ok, Value} -> Value;
-        error       -> undefined
-    end.
 
 

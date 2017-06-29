@@ -22,11 +22,17 @@
 -include_lib("gen_coap/include/coap.hrl").
 
 
--export([get_object_id/1, get_object_and_resource_id/2]).
+-export([get_obj_def/1, get_object_id/1, get_object_and_resource_id/2]).
 
 -define(LOG(Level, Format, Args),
     lager:Level("LWM2M-OBJ: " ++ Format, Args)).
 
+
+get_obj_def(IdOrName) ->
+    case is_integer(IdOrName) of
+        true -> emq_lwm2m_object_database:find_objectid(IdOrName);
+        false -> emq_lwm2m_object_database:find_name(IdOrName)
+    end.
 
 
 
