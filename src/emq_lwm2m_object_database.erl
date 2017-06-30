@@ -20,6 +20,7 @@
 
 -include("emq_lwm2m.hrl").
 -include_lib("gen_coap/include/coap.hrl").
+-include_lib("xmerl/include/xmerl.hrl").
 
 %% API
 -export([start_link/0, stop/0, find_name/1, find_objectid/1]).
@@ -45,16 +46,24 @@ start_link() ->
     gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
 
 find_objectid(ObjectId) ->
-    case ets:lookup(?LWM2M_OBJECT_DEF_TAB, ObjectId) of
+    ObjectIdInt =   case is_list(ObjectId) of
+                        true -> list_to_integer(ObjectId);
+                        false -> ObjectId
+                    end,
+    case ets:lookup(?LWM2M_OBJECT_DEF_TAB, ObjectIdInt) of
         []                -> undefined;
         [{ObjectId, Xml}] -> Xml
     end.
 
 find_name(Name) ->
-    case ets:lookup(?LWM2M_OBJECT_NAME_TO_ID_TAB, Name) of
+    NameBinary =    case is_list(Name) of
+                        true -> list_to_binary(Name);
+                        false -> Name
+                    end,
+    case ets:lookup(?LWM2M_OBJECT_NAME_TO_ID_TAB, NameBinary) of
         []                 ->
             undefined;
-        [{Name, ObjectId}] ->
+        [{NameBinary, ObjectId}] ->
             case ets:lookup(?LWM2M_OBJECT_DEF_TAB, ObjectId) of
                 []                -> undefined;
                 [{ObjectId, Xml}] -> Xml
@@ -106,16 +115,19 @@ load(BaseDir) ->
 load_loop([]) ->
     ok;
 load_loop([FileName|T]) ->
-    Xml = load_xml(FileName),
-    ObjectId = proplists:get_value("ObjectID", Xml),
-    Name = proplists:get_value("Name", Xml),
-    ets:insert(?LWM2M_OBJECT_DEF_TAB, {ObjectId, Xml}),
-    ets:insert(?LWM2M_OBJECT_NAME_TO_ID_TAB, {Name, ObjectId}),
+    ObjectXml = load_xml(FileName),
+    [#xmlText{value=ObjectIdString}] = xmerl_xpath:string("ObjectID/text()", ObjectXml),
+    [#xmlText{value=Name}] = xmerl_xpath:string("Name/text()", ObjectXml),
+    ObjectId = list_to_integer(ObjectIdString),
+    NameBinary = list_to_binary(Name),
+    ?LOG(debug, "load_loop FileName=~p, ObjectId=~p, Name=~p", [FileName, ObjectId, NameBinary]),
+    ets:insert(?LWM2M_OBJECT_DEF_TAB, {ObjectId, ObjectXml}),
+    ets:insert(?LWM2M_OBJECT_NAME_TO_ID_TAB, {NameBinary, ObjectId}),
     load_loop(T).
 
 
 load_xml(FileName) ->
-    {ok, XmlString} = file:read_file(FileName),
-    {ok, Xml} = erlsom:simple_form(XmlString),
-    Xml.
+    {Xml, _Rest} = xmerl_scan:file(FileName),
+    [ObjectXml] = xmerl_xpath:string("/LWM2M/Object", Xml),
+    ObjectXml.
 

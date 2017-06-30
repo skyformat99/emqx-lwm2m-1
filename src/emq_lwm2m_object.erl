@@ -20,41 +20,32 @@
 
 -include("emq_lwm2m.hrl").
 -include_lib("gen_coap/include/coap.hrl").
+-include_lib("xmerl/include/xmerl.hrl").
 
-
--export([get_obj_def/1, get_object_id/1, get_object_and_resource_id/2]).
+-export([get_obj_def/2, get_object_id/1, get_object_and_resource_id/2]).
 
 -define(LOG(Level, Format, Args),
     lager:Level("LWM2M-OBJ: " ++ Format, Args)).
 
 
-get_obj_def(IdOrName) ->
-    case is_integer(IdOrName) of
-        true -> emq_lwm2m_object_database:find_objectid(IdOrName);
-        false -> emq_lwm2m_object_database:find_name(IdOrName)
-    end.
+get_obj_def(ObjectIdInt, true) ->
+    emq_lwm2m_object_database:find_objectid(ObjectIdInt);
+get_obj_def(ObjectNameStr, false) ->
+    emq_lwm2m_object_database:find_name(ObjectNameStr).
 
 
 
 get_object_id(ObjDefinition) ->
-    proplists:get_value("ObjectID", ObjDefinition).
+    [#xmlText{value=ObjectId}] = xmerl_xpath:string("ObjectID/text()", ObjDefinition),
+    ObjectId.
 
 
 get_object_and_resource_id(ResourceNameBinary, ObjDefinition) ->
-    ObjectId = proplists:get_value("ObjectID", ObjDefinition),
-    ResourceList = proplists:get_value("Resources", ObjDefinition),
-    ResourceId = search_res_name(ResourceNameBinary, ResourceList),
+    ResourceNameString = binary_to_list(ResourceNameBinary),
+    [#xmlText{value=ObjectId}] = xmerl_xpath:string("ObjectID/text()", ObjDefinition),
+    [#xmlAttribute{value=ResourceId}] = xmerl_xpath:string("Resources/Item/Name[.=\""++ResourceNameString++"\"]/../@ID", ObjDefinition),
+    ?LOG(debug, "get_object_and_resource_id ObjectId=~p, ResourceId=~p", [ObjectId, ResourceId]),
     {ObjectId, ResourceId}.
-
-search_res_name(ResourceNameBinary, []) ->
-    ?LOG(error, "~p is an invalid resource name", [ResourceNameBinary]),
-    error(invalid_resource_name);
-search_res_name(ResourceNameBinary, [{"Item", [{"ID", Id}], Attributes}|T]) ->
-    Name = list_to_binary(proplists:get_value("Name", Attributes)),
-    case Name of
-        ResourceNameBinary -> Id;
-        _Other             -> search_res_name(ResourceNameBinary, T)
-    end.
 
 
 

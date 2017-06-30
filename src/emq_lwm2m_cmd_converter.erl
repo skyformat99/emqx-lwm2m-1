@@ -36,15 +36,15 @@ mqtt_payload_to_coap_request(InputCmd = #{<<"Command">> := <<"Read">>}) ->
 
 
 build_path({ObjectName, undefined, undefined}) ->
-    ObjDef = emq_lwm2m_object:get_obj_def(ObjectName),
+    ObjDef = emq_lwm2m_object:get_obj_def(ObjectName, false),
     Oid = emq_lwm2m_object:get_object_id(ObjDef),
     make_path("/~p", [Oid]);
 build_path({ObjectName, ObjectInstanceId, undefined}) ->
-    ObjDef = emq_lwm2m_object:get_obj_def(ObjectName),
+    ObjDef = emq_lwm2m_object:get_obj_def(ObjectName, false),
     Oid = emq_lwm2m_object:get_object_id(ObjDef),
     make_path("/~p/~p", [Oid, ObjectInstanceId]);
 build_path({ObjectName, ObjectInstanceId, ResourceId}) ->
-    ObjDef = emq_lwm2m_object:get_obj_def(ObjectName),
+    ObjDef = emq_lwm2m_object:get_obj_def(ObjectName, false),
     {Oid, Rid} = emq_lwm2m_object:get_object_and_resource_id(ResourceId, ObjDef),
     make_path("/~p/~p/~p", [Oid, ObjectInstanceId, Rid]).
 
