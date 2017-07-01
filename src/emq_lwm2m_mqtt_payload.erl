@@ -28,16 +28,14 @@
     lager:Level("LWM2M-MQTT-PLD: " ++ Format, Args)).
 
 
--define(OBJECT_ID,          <<"ObjectID">>).
--define(OBJECT_INSTANCE_ID, <<"ObjectInstanceID">>).
--define(RESOURCE_ID,        <<"ResourceID">>).
+
 
 
 get_oid_rid(MqttPayload) ->
     ?LOG(debug, "get_oid_rid() MqttPayload=~p", [MqttPayload]),
-    ObjectId         = maps:get(?OBJECT_ID, MqttPayload, undefined),
-    ObjectInstanceId = maps:get(?OBJECT_INSTANCE_ID, MqttPayload, undefined),
-    ResourceId       = maps:get(?RESOURCE_ID, MqttPayload, undefined),
+    ObjectId         = maps:get(?MQ_OBJECT_ID, MqttPayload, undefined),
+    ObjectInstanceId = maps:get(?MQ_OBJECT_INSTANCE_ID, MqttPayload, undefined),
+    ResourceId       = maps:get(?MQ_RESOURCE_ID, MqttPayload, undefined),
     {ObjectId, ObjectInstanceId, ResourceId}.
 
 

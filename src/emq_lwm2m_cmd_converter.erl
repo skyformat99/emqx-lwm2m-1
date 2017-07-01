@@ -28,7 +28,7 @@
     lager:Level("LWM2M-CNVT: " ++ Format, Args)).
 
 
-mqtt_payload_to_coap_request(InputCmd = #{<<"Command">> := <<"Read">>}) ->
+mqtt_payload_to_coap_request(InputCmd = #{?MQ_COMMAND := <<"Read">>}) ->
     Path = build_path(emq_lwm2m_mqtt_payload:get_oid_rid(InputCmd)),
     coap_message:request(con, get, <<>>, [{uri_path, Path}]).
 
@@ -38,16 +38,17 @@ mqtt_payload_to_coap_request(InputCmd = #{<<"Command">> := <<"Read">>}) ->
 build_path({ObjectName, undefined, undefined}) ->
     ObjDef = emq_lwm2m_object:get_obj_def(ObjectName, false),
     Oid = emq_lwm2m_object:get_object_id(ObjDef),
-    make_path("/~p", [Oid]);
+    make_path("/~s", [Oid]);
 build_path({ObjectName, ObjectInstanceId, undefined}) ->
     ObjDef = emq_lwm2m_object:get_obj_def(ObjectName, false),
     Oid = emq_lwm2m_object:get_object_id(ObjDef),
-    make_path("/~p/~p", [Oid, ObjectInstanceId]);
+    make_path("/~s/~b", [Oid, ObjectInstanceId]);
 build_path({ObjectName, ObjectInstanceId, ResourceId}) ->
     ObjDef = emq_lwm2m_object:get_obj_def(ObjectName, false),
     {Oid, Rid} = emq_lwm2m_object:get_object_and_resource_id(ResourceId, ObjDef),
-    make_path("/~p/~p/~p", [Oid, ObjectInstanceId, Rid]).
+    make_path("/~s/~b/~s", [Oid, ObjectInstanceId, Rid]).
 
 
 make_path(Format, Args) ->
-    list_to_binary(lists:flatten(io_lib:format(Format, Args))).
+    [list_to_binary(lists:flatten(io_lib:format(Format, Args)))].
+

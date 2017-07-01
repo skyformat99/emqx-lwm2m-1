@@ -22,7 +22,7 @@
 
 -define(LOGT(Format, Args), lager:debug("TEST_SUITE: " ++ Format, Args)).
 
-
+-include("emq_lwm2m.hrl").
 -include_lib("gen_coap/include/coap.hrl").
 -include_lib("eunit/include/eunit.hrl").
 
@@ -64,6 +64,8 @@ case01_register(_Config) ->
 
 
 case10_read(_Config) ->
+    application:set_env(?APP, xml_dir, "../../test/xml"),
+    ?LOGT("pwd is ~p", [os:cmd("pwd")]),
     test_mqtt_broker:start_link(),
     {ok, _Started} = application:ensure_all_started(emq_lwm2m),
     timer:sleep(100),
@@ -78,7 +80,7 @@ case10_read(_Config) ->
 
 
     CommandTopic = <<"lwm2m/", (list_to_binary(Epn))/binary, "/command">>,
-    Command = [{<<"Command">>, <<"Read">>}, {<<"ObjectID">>, <<"Device">>}, {<<"ObjectInstance">>, 0}, {<<"ResourceID">>, <<"Manufacturer">>}],
+    Command = [{?MQ_COMMAND, <<"Read">>}, {?MQ_OBJECT_ID, <<"Device">>}, {?MQ_OBJECT_INSTANCE_ID, 0}, {?MQ_RESOURCE_ID, <<"Manufacturer">>}],
     CommandJson = jsx:encode(Command),
     test_mqtt_broker:dispatch(CommandTopic, CommandJson, CommandTopic),
     timer:sleep(50),
@@ -99,6 +101,11 @@ receive_notification() ->
     after 2000 ->
         receive_notification_timeout
     end.
+
+
+%% TODO: add a case that xml is corrupted
+
+
 
 
 
