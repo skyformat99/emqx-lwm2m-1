@@ -33,7 +33,7 @@
 -define(LWM2M_REGISTER_PREFIX, <<"rd">>).
 
 -define(LOG(Level, Format, Args),
-    lager:Level("LWM2M-REG: " ++ Format, Args)).
+    lager:Level("LWM2M-RESOURCE: " ++ Format, Args)).
 
 -record(lwm2m_query, {epn, life_time, sms, lwm2m_ver}).
 
@@ -100,9 +100,10 @@ coap_unobserve({state, ChId, Prefix, Name}) ->
     ok.
 
 handle_info({dispatch_command, CommandJson}, _ObState) ->
+    ?LOG(debug, "dispatch_command CommandJson=~p", [CommandJson]),
     Command = jsx:decode(CommandJson, [return_maps]),
     CoapRequest = emq_lwm2m_cmd_converter:mqtt_payload_to_coap_request(Command),
-    ?LOG(debug, "dispatch_command ~p CoapRequest=~p", [CommandJson, CoapRequest]),
+    ?LOG(debug, "dispatch_command CoapRequest=~p", [CoapRequest]),
     {send_request, CoapRequest};
 
 handle_info({coap_response, ChId, _Channel, _Ref, Message}, ObState) ->
