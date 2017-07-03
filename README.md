@@ -38,6 +38,90 @@ Downlink command topic is "lwm2m/{?device_end_point_name}/command".
 Uplink response topic is "lwm2m/{?device_end_point_name}/response".
 
 
+## Value Type
+Value may have following type:
+- text - ascii text format of int, float, string, boolean
+- binary - data is arbitrary binary which is base64-encoded
+- json - json format of multi-resource
+
+
+### READ command
+```
+{
+    "CmdID": {?CmdID},
+    "Command": "Read",
+    "ObjectID":  {?ObjectName},
+    "ObjectInstanceID": {?ObjectInstanceID},
+    "ResourceID": {?ResourceID}
+}
+```
+
+Response
+```
+{
+    "CmdID": {?CmdID},
+    "ObjectID":  {?ObjectName},
+    "ObjectInstanceID": {?ObjectInstanceID},
+    "Result":
+    [
+        {
+            "ResourceID": {?ResourceID},
+            "ValueType": {?ValueType},
+            "Value": {?Value}
+        },
+        {
+            "ResourceID": {?ResourceIDX},
+            "ValueType": {?ValueTypeX},
+            "Value": {?ValueX}
+        },
+    ]
+}
+```
+
+
+
+### WRITE command
+```
+{
+    "CmdID": {?CmdID},
+    "Command": "Write",
+    "ObjectID":  {?ObjectName},
+    "ObjectInstanceID": {?ObjectInstanceID},
+    "Changes":
+    [
+        {
+            "ResourceID": {?ResourceID},
+            "ValueType": {?ValueType},
+            "Value": {?Value}
+        },
+        {
+            "ResourceID": {?ResourceIDX},
+            "ValueType": {?ValueTypeX},
+            "Value": {?ValueX}
+        },
+    ]
+}
+```
+- {?CmdID}, an integer to identify a command response against its request.
+- {?ObjectName}, a string represents object name, mandatory.
+- {?ObjectInstanceID}, an integer, optional.
+- {?ResourceID}, a string represents resource name, mandatory.
+- {?ValueType}, a string represents the value type of {?Value}, mandatory.
+- {?Value}, this parameter could be variant type as {?ValueType} specified, mandatory.
+
+
+Response
+```
+{
+    "CmdID": {?CmdID},
+    "Result": {?Code}
+}
+```
+- {?CmdID}, an integer to identify a command response against its request.
+- {?Code} could be "Changed", "Bad Request", "Not Found", "Unauthorized" or "Method Not Allowed"
+
+
+
 DTLS
 -----------
 emq-coap support DTLS to secure UDP data.
@@ -57,43 +141,6 @@ cd libcoap
 make
 ```
 
-### Publish example:
-```
-libcoap/examples/coap-client -m put -e 1234  "coap://127.0.0.1/mqtt/topic1?c=client1&u=tom&p=secret"
-```
-- topic name is topic1
-- client id is client1
-- username is tom
-- password is secret
-- payload is a text string "1234"
-
-### Subscribe example:
-
-```
-libcoap/examples/coap-client -m get -s 10 "coap://127.0.0.1/mqtt/topic1?c=client1&u=tom&p=secret"
-```
-- topic name is topic1
-- client id is client1
-- username is tom
-- password is secret
-- subscribe time is 10 seconds
-
-And you will get following result if anybody sent message with text "1234567" on topic1:
-
-```
-v:1 t:CON c:GET i:31ae {} [ ]
-1234567v:1 t:CON c:GET i:31af {} [ Observe:1, Uri-Path:mqtt, Uri-Path:topic1, Uri-Query:c=client1, Uri-Query:u=tom, Uri-Query:p=secret ]
-```
-
-The output message is not well formatted which hide "1234567" at the head of the 2nd line.
-
-
-### NOTES
-emq_coap gateway does not accept POST and DELETE request.
-
-
-## Known Issues
-- Upon unloading emq-coap plugin, udp dtls port (5884 by default) could not be closed properly.
 
 
 License

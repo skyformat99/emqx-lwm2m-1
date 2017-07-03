@@ -71,11 +71,6 @@ coap_post(ChId, Prefix, Name, Query, Content) ->
     ?LOG(error, "bad post request ChId=~p, Prefix=~p, Name=~p, Query=~p, Content=~p", [ChId, Prefix, Name, Query, Content]),
     {error, bad_request}.
 
-coap_put(_ChId, [?LWM2M_REGISTER_PREFIX], [Topic], Query, #coap_content{payload = Payload}) ->
-    ?LOG(debug, "put message, Topic=~p, Query=~p, Payload=~p~n", [Topic, Query, Payload]),
-    Pid = get(mqtt_client_pid),
-    emq_lwm2m_mqtt_adapter:publish(Pid, Payload),
-    ok;
 coap_put(_ChId, Prefix, Name, Query, Content) ->
     ?LOG(error, "put has error, Prefix=~p, Name=~p, Query=~p, Content=~p", [Prefix, Name, Query, Content]),
     {error, bad_request}.
@@ -99,16 +94,13 @@ coap_unobserve({state, ChId, Prefix, Name}) ->
     ?LOG(error, "ignore unknown unobserve request ChId=~p, Prefix=~p, Name=~p", [ChId, Prefix, Name]),
     ok.
 
-handle_info({dispatch_command, CommandJson}, _ObState) ->
-    ?LOG(debug, "dispatch_command CommandJson=~p", [CommandJson]),
-    Command = jsx:decode(CommandJson, [return_maps]),
-    CoapRequest = emq_lwm2m_cmd_converter:mqtt_payload_to_coap_request(Command),
-    ?LOG(debug, "dispatch_command CoapRequest=~p", [CoapRequest]),
-    {send_request, CoapRequest};
+handle_info({dispatch_command, CoapRequest, Ref}, _ObState) ->
+    ?LOG(debug, "dispatch_command CoapRequest=~p, Ref=~p", [CoapRequest, Ref]),
+    {send_request, CoapRequest, Ref};
 
-handle_info({coap_response, ChId, _Channel, _Ref, #coap_message{payload = Payload}}, ObState) ->
-    Message = emq_lwm2m_cmd_converter:coap_response_to_mqtt_payload(Payload),
-    emq_lwm2m_mqtt_adapter:publish(ChId, Message),
+handle_info({coap_response, ChId, _Channel, Ref, #coap_message{payload = Payload, options = Options}}, ObState) ->
+    DataFormat = data_format(Options),
+    emq_lwm2m_mqtt_adapter:publish(ChId, Payload, DataFormat, Ref),
     {noreply, ObState};
 
 handle_info(Message, State) ->
@@ -133,6 +125,13 @@ parse_query([<<$l, $w, $m, $2, $m, $=, Rest/binary>>|T], Query=#lwm2m_query{}) -
                     Value       -> Value
                 end,
     parse_query(T, Query#lwm2m_query{lwm2m_ver = Version}).
+
+data_format([]) ->
+    <<"text/plain">>;
+data_format([{content_format, Format}|_]) ->
+    Format;
+data_format([{_, _}|T]) ->
+    data_format(T).
 
 % end of file
 

@@ -26,7 +26,7 @@
 
 
 %% API.
--export([start_link/3, publish/2, keepalive/1]).
+-export([start_link/3, publish/4, keepalive/1]).
 -export([stop/1]).
 
 %% gen_server.
@@ -69,8 +69,8 @@ start_link(CoapPid, ClientId, ChId) ->
 stop(ChId) ->
     gen_server:stop(emq_lwm2m_registry:whereis_name(ChId)).
 
-publish(ChId, Response) ->
-    gen_server:call({via, emq_lwm2m_registry, ChId}, {publish, Response}).
+publish(ChId, Response, DataFormat, Ref) ->
+    gen_server:call({via, emq_lwm2m_registry, ChId}, {publish, Response, DataFormat, Ref}).
 
 keepalive(ChId)->
     gen_server:cast({via, emq_lwm2m_registry, ChId}, keepalive).
@@ -91,8 +91,9 @@ init({CoapPid, ClientId, ChId}) ->
             {stop, Other}
     end.
 
-handle_call({publish, Payload}, _From, State=#state{proto = Proto, rsp_topic = Topic}) ->
-    NewProto = ?PROTO_PUBLISH(Topic, Payload, Proto),
+handle_call({publish, CoapResponse, DataFormat, Ref}, _From, State=#state{proto = Proto, rsp_topic = Topic}) ->
+    Message = emq_lwm2m_cmd_converter:coap_response_to_mqtt_payload(CoapResponse, DataFormat, Ref),
+    NewProto = ?PROTO_PUBLISH(Topic, Message, Proto),
     {reply, ok, State#state{proto = NewProto}};
 
 
@@ -260,11 +261,11 @@ proto_deliver_ack(#mqtt_message{qos = ?QOS2, pktid = PacketId}, Proto) ->
 
 
 
-deliver_to_coap(Payload, CoapPid) ->
-    ?LOG(debug, "deliver_to_coap CoapPid=~p (alive=~p), Payload=~p", [CoapPid, is_process_alive(CoapPid), Payload]),
-    % TODO: convert json to lwm2m format
-    CoapPid ! {dispatch_command, Payload}.
-
+deliver_to_coap(CommandJson, CoapPid) ->
+    ?LOG(debug, "deliver_to_coap CoapPid=~p (alive=~p), Payload=~p, Ref", [CoapPid, is_process_alive(CoapPid), Payload, Ref]),
+    Command = jsx:decode(CommandJson, [return_maps]),
+    {CoapRequest, Ref} = emq_lwm2m_cmd_converter:mqtt_payload_to_coap_request(Command),
+    CoapPid ! {dispatch_command, CoapRequest, Ref}.
 
 
 

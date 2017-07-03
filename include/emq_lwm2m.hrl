@@ -20,13 +20,16 @@
 -record(coap_mqtt_auth, {clientid, username, password}).
 
 
-
-
+-define(MQ_COMMAND_ID,         <<"CmdID">>).
 -define(MQ_COMMAND,            <<"Command">>).
--define(MQ_RESPONSE,           <<"Response">>).
+
 -define(MQ_OBJECT_ID,          <<"ObjectID">>).
 -define(MQ_OBJECT_INSTANCE_ID, <<"ObjectInstanceID">>).
 -define(MQ_RESOURCE_ID,        <<"ResourceID">>).
+
+-define(MQ_VALUE_TYPE,         <<"ValueType">>).
+-define(MQ_VALUE,              <<"Value">>).
+-define(MQ_RESULT,             <<"Result">>).
 
 
 
