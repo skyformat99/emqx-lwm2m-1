@@ -21,7 +21,7 @@
 -include("emq_lwm2m.hrl").
 -include_lib("gen_coap/include/coap.hrl").
 
--export([mqtt_payload_to_coap_request/1]).
+-export([mqtt_payload_to_coap_request/1, coap_response_to_mqtt_payload/1]).
 
 
 -define(LOG(Level, Format, Args),
@@ -29,26 +29,38 @@
 
 
 mqtt_payload_to_coap_request(InputCmd = #{?MQ_COMMAND := <<"Read">>}) ->
-    Path = build_path(emq_lwm2m_mqtt_payload:get_oid_rid(InputCmd)),
+    Path = build_path(get_oid_rid(InputCmd)),
     coap_message:request(con, get, <<>>, [{uri_path, Path}]).
 
+
+coap_response_to_mqtt_payload(CoapPayload) ->
+    ?LOG(debug, "coap_response_to_mqtt_payload CoapPayload=~p", [CoapPayload]),
+    jsx:encode([{?MQ_RESPONSE, CoapPayload}]).
 
 
 
 build_path({ObjectName, undefined, undefined}) ->
-    ObjDef = emq_lwm2m_object:get_obj_def(ObjectName, false),
-    Oid = emq_lwm2m_object:get_object_id(ObjDef),
+    ObjDef = emq_lwm2m_xml_object:get_obj_def(ObjectName, false),
+    Oid = emq_lwm2m_xml_object:get_object_id(ObjDef),
     make_path("/~s", [Oid]);
 build_path({ObjectName, ObjectInstanceId, undefined}) ->
-    ObjDef = emq_lwm2m_object:get_obj_def(ObjectName, false),
-    Oid = emq_lwm2m_object:get_object_id(ObjDef),
+    ObjDef = emq_lwm2m_xml_object:get_obj_def(ObjectName, false),
+    Oid = emq_lwm2m_xml_object:get_object_id(ObjDef),
     make_path("/~s/~b", [Oid, ObjectInstanceId]);
 build_path({ObjectName, ObjectInstanceId, ResourceId}) ->
-    ObjDef = emq_lwm2m_object:get_obj_def(ObjectName, false),
-    {Oid, Rid} = emq_lwm2m_object:get_object_and_resource_id(ResourceId, ObjDef),
+    ObjDef = emq_lwm2m_xml_object:get_obj_def(ObjectName, false),
+    {Oid, Rid} = emq_lwm2m_xml_object:get_object_and_resource_id(ResourceId, ObjDef),
     make_path("/~s/~b/~s", [Oid, ObjectInstanceId, Rid]).
 
 
 make_path(Format, Args) ->
     [list_to_binary(lists:flatten(io_lib:format(Format, Args)))].
+
+
+get_oid_rid(MqttPayload) ->
+    ?LOG(debug, "get_oid_rid() MqttPayload=~p", [MqttPayload]),
+    ObjectId         = maps:get(?MQ_OBJECT_ID, MqttPayload, undefined),
+    ObjectInstanceId = maps:get(?MQ_OBJECT_INSTANCE_ID, MqttPayload, undefined),
+    ResourceId       = maps:get(?MQ_RESOURCE_ID, MqttPayload, undefined),
+    {ObjectId, ObjectInstanceId, ResourceId}.
 

@@ -29,5 +29,5 @@ start_link() ->
     supervisor:start_link({local, ?MODULE}, ?MODULE, []).
 
 init(_Args) ->
-    {ok, { {one_for_all, 10, 3600}, [?CHILD(emq_lwm2m_registry), ?CHILD(emq_lwm2m_endpointname), ?CHILD(emq_lwm2m_object_database)] }}.
+    {ok, { {one_for_all, 10, 3600}, [?CHILD(emq_lwm2m_registry), ?CHILD(emq_lwm2m_endpointname), ?CHILD(emq_lwm2m_xml_object_db)] }}.
 

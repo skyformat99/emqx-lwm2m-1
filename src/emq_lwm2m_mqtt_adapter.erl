@@ -92,7 +92,6 @@ init({CoapPid, ClientId, ChId}) ->
     end.
 
 handle_call({publish, Payload}, _From, State=#state{proto = Proto, rsp_topic = Topic}) ->
-    % TODO: convert lwm2m response to json format
     NewProto = ?PROTO_PUBLISH(Topic, Payload, Proto),
     {reply, ok, State#state{proto = NewProto}};
 

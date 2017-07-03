@@ -106,7 +106,8 @@ handle_info({dispatch_command, CommandJson}, _ObState) ->
     ?LOG(debug, "dispatch_command CoapRequest=~p", [CoapRequest]),
     {send_request, CoapRequest};
 
-handle_info({coap_response, ChId, _Channel, _Ref, Message}, ObState) ->
+handle_info({coap_response, ChId, _Channel, _Ref, #coap_message{payload = Payload}}, ObState) ->
+    Message = emq_lwm2m_cmd_converter:coap_response_to_mqtt_payload(Payload),
     emq_lwm2m_mqtt_adapter:publish(ChId, Message),
     {noreply, ObState};
 

@@ -14,7 +14,7 @@
 %% limitations under the License.
 %%--------------------------------------------------------------------
 
--module(emq_lwm2m_object_database).
+-module(emq_lwm2m_xml_object_db).
 
 -author("Feng Lee <feng@emqtt.io>").
 

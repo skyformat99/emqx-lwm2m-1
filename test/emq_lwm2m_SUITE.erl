@@ -53,7 +53,7 @@ case01_register(_Config) ->
                             payload = <<"</1>, </2>, </3>, </4>, </5>">>},
                             [],
                             MsgId),
-    {Method, MsgId, _Token, _Payload} = test_recv_coap_response(UdpSock),
+    #coap_message{type = ack, method = Method} = test_recv_coap_response(UdpSock),
     ?assertMatch({ok,created}, Method),
     timer:sleep(50),
     SubTopic = list_to_binary("lwm2m/"++Epn++"/command"),
@@ -77,6 +77,7 @@ case10_read(_Config) ->
     {ok, _Started} = application:ensure_all_started(emq_lwm2m),
     timer:sleep(100),
 
+    % step 1, device register ...
     Epn = "urn:oma:lwm2m:oma:3",
     MsgId1 = 15,
     {ok, UdpSock} = test_open_udp_socket(),
@@ -86,25 +87,34 @@ case10_read(_Config) ->
                             #coap_content{format = <<"text/plain">>, payload = <<"</1>, </2>, </3/0>, </4>, </5>">>},
                             [],
                             MsgId1),
-    {Method1, MsgId1, _Token1, _Payload1} = test_recv_coap_response(UdpSock),
-    ?assertMatch({ok,created}, Method1),
+    #coap_message{method = Method1, payload=Payload1} = test_recv_coap_response(UdpSock),
+    ?assertEqual({ok,created}, Method1),
+    ?assertEqual(<<"/rd/0">>, Payload1),
     timer:sleep(50),
     SubTopic = list_to_binary("lwm2m/"++Epn++"/command"),
     ?assertEqual([SubTopic], test_mqtt_broker:get_subscrbied_topics()),
 
 
+    % step2,  send a READ command to device
     CommandTopic = <<"lwm2m/", (list_to_binary(Epn))/binary, "/command">>,
     Command = [{?MQ_COMMAND, <<"Read">>}, {?MQ_OBJECT_ID, <<"Device">>}, {?MQ_OBJECT_INSTANCE_ID, 0}, {?MQ_RESOURCE_ID, <<"Manufacturer">>}],
     CommandJson = jsx:encode(Command),
     test_mqtt_broker:dispatch(CommandTopic, CommandJson, CommandTopic),
     timer:sleep(50),
-    {Method2, _MsgId2, _Token2, Path2, _Query2, Payload2} = test_recv_coap_request(UdpSock),
-    ?assertMatch(get, Method2),
-    ?assertMatch(<<"3/0/0">>, Path2),
+    Request2 = test_recv_coap_request(UdpSock),
+    #coap_message{method = Method2, options=Options2, payload=Payload2} = Request2,
+    Path2 = get_coap_path(Options2),
+    ?assertEqual(get, Method2),
+    ?assertEqual(<<"/3/0/0">>, Path2),
+    ?assertEqual(<<>>, Payload2),
     timer:sleep(50),
 
-    % TODO:
-    error("client send response"),
+    test_send_coap_response(UdpSock, "127.0.0.1", ?PORT, #coap_content{payload = <<"EMQ">>}, Request2),
+    timer:sleep(100),
+
+    PubTopic = list_to_binary("lwm2m/"++Epn++"/response"),
+    ReadResult = jsx:encode(#{<<"Response">> => <<"EMQ">>}),
+    ?assertEqual({PubTopic, ReadResult}, test_mqtt_broker:get_published_msg()),
 
     test_close_udp_socket(UdpSock),
     ok = application:stop(emq_lwm2m),
@@ -151,19 +161,31 @@ test_send_coap_request(UdpSock, Method, Uri, Content, Options, MsgId) ->
 test_recv_coap_response(UdpSock) ->
     {ok, {Address, Port, Packet}} = gen_udp:recv(UdpSock, 0, 2000),
     ?LOGT("test udp receive from ~p:~p, data1=~p", [Address, Port, Packet]),
-    #coap_message{type = ack, method = Method, id=Id, token = Token, payload = Payload} = coap_message_parser:decode(Packet),
+    Response = coap_message_parser:decode(Packet),
+    #coap_message{type = ack, method = Method, id=Id, token = Token, payload = Payload} = Response,
     ?LOGT("receive coap response Method=~p, Id=~p, Token=~p, Payload=~p", [Method, Id, Token, Payload]),
-    {Method, Id, Token, Payload}.
+    Response.
 
 
 test_recv_coap_request(UdpSock) ->
     {ok, {Address, Port, Packet}} = gen_udp:recv(UdpSock, 0, 2000),
     ?LOGT("test udp receive from ~p:~p, data2=~p", [Address, Port, Packet]),
-    #coap_message{type = con, method = Method, id=Id, token = Token, payload = Payload, options = Options} = coap_message_parser:decode(Packet),
-    Path = get_path(Options, <<>>),
-    Query = get_query(Options, []),
-    ?LOGT("receive coap request Method=~p, Id=~p, Token=~p, Options=~p, Payload=~p, Path=~p, Query=~p", [Method, Id, Token, Options, Payload, Path, Query]),
-    {Method, Id, Token, Path, Query, Payload}.
+    Request = coap_message_parser:decode(Packet),
+    #coap_message{type = con, method = Method, id=Id, token = Token, payload = Payload, options = Options} = Request,
+    ?LOGT("receive coap request Method=~p, Id=~p, Token=~p, Options=~p, Payload=~p", [Method, Id, Token, Options, Payload]),
+    Request.
+
+
+test_send_coap_response(UdpSock, Host, Port, Content, Request) ->
+    is_record(Content, coap_content) orelse error("Content must be a #coap_content!"),
+    is_list(Host) orelse error("Host is not a string"),
+
+    {ok, IpAddr} = inet:getaddr(Host, inet),
+    Response = coap_message:response({ok, content}, Content, Request),
+    ?LOGT("test_send_coap_response Response=~p", [Response]),
+    ResponseBinary = coap_message_parser:encode(Response),
+    ?LOGT("test udp socket send to ~p:~p, data=~p", [IpAddr, Port, ResponseBinary]),
+    ok = gen_udp:send(UdpSock, IpAddr, Port, ResponseBinary).
 
 
 resolve_uri(Uri) ->
@@ -190,6 +212,15 @@ split_segments(Path, Char, Acc) ->
 
 make_segment(Seg) ->
     list_to_binary(http_uri:decode(Seg)).
+
+
+get_coap_path(Options) ->
+    get_path(Options, <<>>).
+
+get_coap_query(Options) ->
+    get_query(Options, []).
+
+
 
 get_path([], Acc) ->
     %?LOGT("get_path Acc=~p", [Acc]),

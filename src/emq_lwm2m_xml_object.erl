@@ -14,7 +14,7 @@
 %% limitations under the License.
 %%--------------------------------------------------------------------
 
--module(emq_lwm2m_object).
+-module(emq_lwm2m_xml_object).
 
 -author("Feng Lee <feng@emqtt.io>").
 
@@ -29,9 +29,9 @@
 
 
 get_obj_def(ObjectIdInt, true) ->
-    emq_lwm2m_object_database:find_objectid(ObjectIdInt);
+    emq_lwm2m_xml_object_db:find_objectid(ObjectIdInt);
 get_obj_def(ObjectNameStr, false) ->
-    emq_lwm2m_object_database:find_name(ObjectNameStr).
+    emq_lwm2m_xml_object_db:find_name(ObjectNameStr).
 
 
 
