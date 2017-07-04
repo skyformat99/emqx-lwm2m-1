@@ -31,8 +31,8 @@
 mqtt_payload_to_coap_request(InputCmd = #{?MQ_COMMAND := <<"Read">>}) ->
     {ObjectId, ObjectInstanceId, ResourceId} = get_oid_rid(InputCmd),
     Path = build_path({ObjectId, ObjectInstanceId, ResourceId}),
-    {coap_message:request(con, get, <<>>, [{uri_path, Path}]), InputCmd};
-mqtt_payload_to_coap_request(InputCmd = #{?MQ_COMMAND := <<"Write">>, ?MQ_VALUE := Value}) ->
+    {coap_message:request(con, get, <<>>, [{uri_path, Path}, {'accept', ?LWM2M_FORMAT_PLAIN_TEXT}]), InputCmd};
+mqtt_payload_to_coap_request(InputCmd = #{?MQ_COMMAND := <<"Write">>}) ->
     {ObjectId, ObjectInstanceId, ResourceId} = get_oid_rid(InputCmd),
     Path = build_path({ObjectId, ObjectInstanceId, ResourceId}),
     Method = case ResourceId of
@@ -46,7 +46,11 @@ mqtt_payload_to_coap_request(InputCmd = #{?MQ_COMMAND := <<"Write">>, ?MQ_VALUE 
 mqtt_payload_to_coap_request(InputCmd = #{?MQ_COMMAND := <<"Execute">>}) ->
     {ObjectId, ObjectInstanceId, ResourceId} = get_oid_rid(InputCmd),
     Path = build_path({ObjectId, ObjectInstanceId, ResourceId}),
-    {coap_message:request(con, post, <<>>, [{uri_path, Path}]), InputCmd}.
+    {coap_message:request(con, post, <<>>, [{uri_path, Path}]), InputCmd};
+mqtt_payload_to_coap_request(InputCmd = #{?MQ_COMMAND := <<"Discover">>}) ->
+    {ObjectId, ObjectInstanceId, ResourceId} = get_oid_rid(InputCmd),
+    Path = build_path({ObjectId, ObjectInstanceId, ResourceId}),
+    {coap_message:request(con, get, <<>>, [{uri_path, Path}, {'accept', ?LWM2M_FORMAT_LINK}]), InputCmd}.
 
 
 coap_response_to_mqtt_payload(Method, CoapPayload, Format, Ref=#{?MQ_COMMAND := <<"Read">>}) ->
@@ -57,7 +61,10 @@ coap_response_to_mqtt_payload(Method, CoapPayload, Format, Ref=#{?MQ_COMMAND := 
     coap_write_response_to_mqtt_payload(Ref, Method);
 coap_response_to_mqtt_payload(Method, CoapPayload, Format, Ref=#{?MQ_COMMAND := <<"Execute">>}) ->
     ?LOG(debug, "coap_response_to_mqtt_payload execute Method=~p, CoapPayload=~p, Format=~p, Ref=~p", [Method, CoapPayload, Format, Ref]),
-    coap_execute_response_to_mqtt_payload(Ref, Method).
+    coap_execute_response_to_mqtt_payload(Ref, Method);
+coap_response_to_mqtt_payload(Method, CoapPayload, Format, Ref=#{?MQ_COMMAND := <<"Discover">>}) ->
+    ?LOG(debug, "coap_response_to_mqtt_payload discover Method=~p, CoapPayload=~p, Format=~p, Ref=~p", [Method, CoapPayload, Format, Ref]),
+    coap_discover_response_to_mqtt_payload(Ref, CoapPayload, Method).
 
 
 
@@ -115,7 +122,12 @@ coap_write_response_to_mqtt_payload(Ref, {error, Error}) ->
 coap_execute_response_to_mqtt_payload(Ref, {ok, changed}) ->
     make_write_resource_response(Ref, <<"Changed">>);
 coap_execute_response_to_mqtt_payload(Ref, {error, Error}) ->
-    make_write_resource_response(Ref, error_code(Error)).
+    make_write_resource_error(Ref, error_code(Error)).
+
+coap_discover_response_to_mqtt_payload(Ref, CoapPayload, {ok, content}) ->
+    make_read_resource_response(Ref, <<"text">>, CoapPayload);
+coap_discover_response_to_mqtt_payload(Ref, _CoapPayload, {error, Error}) ->
+    make_read_resource_error(Ref, error_code(Error)).
 
 
 
@@ -178,6 +190,17 @@ make_write_resource_response(Ref=#{}, Result) ->
                     ?MQ_RESULT              => Result
                 }).
 
+make_write_resource_error(Ref=#{}, Error) ->
+    ?LOG(debug, "make_write_resource_error Ref=~p, Error=~p", [Ref, Error]),
+    jsx:encode(#{
+        ?MQ_COMMAND_ID          => maps:get(?MQ_COMMAND_ID, Ref),
+        ?MQ_OBJECT_ID           => maps:get(?MQ_OBJECT_ID, Ref),
+        ?MQ_OBJECT_INSTANCE_ID  => maps:get(?MQ_OBJECT_INSTANCE_ID, Ref),
+        ?MQ_RESOURCE_ID         => maps:get(?MQ_RESOURCE_ID, Ref),
+        ?MQ_ERROR               => Error
+    }).
+
+
 
 process_write_object_command(Method, Path, InputCmd) ->
     ?LOG(debug, "process_write_object_command Method=~p, Path=~p, InputCmd=~p", [Method, Path, InputCmd]),
@@ -185,12 +208,12 @@ process_write_object_command(Method, Path, InputCmd) ->
 
 
 process_write_resource_command(Method, Path, InputCmd=#{?MQ_VALUE_TYPE := Type, ?MQ_VALUE := Value}) ->
-    Payload =   case Type of
-                    <<"text">>   -> to_binary(Value);
-                    <<"binary">> -> to_binary(Value);
-                    <<"json">>   -> error("not support now")
-                end,
-    {coap_message:request(con, Method, Payload, [{uri_path, Path}]), InputCmd}.
+    {Format, Payload} = case Type of
+                            <<"text">>   -> {<<"text/plain">>, to_binary(Value)};
+                            <<"binary">> -> {<<"application/octet-stream">>, to_binary(Value)};
+                            <<"json">>   -> error("not support now")
+                        end,
+    {coap_message:request(con, Method, Payload, [{uri_path, Path}, {content_format, Format}]), InputCmd}.
 
 
 error_code(not_acceptable) ->

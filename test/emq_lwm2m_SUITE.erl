@@ -27,7 +27,11 @@
 -include_lib("eunit/include/eunit.hrl").
 
 
-all() -> [case01_register, case10_read, case20_write, case30_execute].
+all() -> [case01_register,
+    case10_read,
+    case20_write,
+    case30_execute,
+    case40_discover].
 
 
 
@@ -265,6 +269,76 @@ case30_execute(_Config) ->
     ok = application:stop(gen_coap),
     test_mqtt_broker:stop().
 
+
+
+
+case40_discover(_Config) ->
+    application:set_env(?APP, xml_dir, "../../test/xml"),
+    test_mqtt_broker:start_link(),
+    {ok, _Started} = application:ensure_all_started(emq_lwm2m),
+    timer:sleep(100),
+
+    % step 1, device register ...
+    Epn = "urn:oma:lwm2m:oma:3",
+    MsgId1 = 15,
+    {ok, UdpSock} = test_open_udp_socket(),
+    test_send_coap_request( UdpSock,
+        post,
+        "coap://127.0.0.1/rd?ep="++Epn++"&lt=345&lwm2m=1",
+        #coap_content{format = <<"text/plain">>, payload = <<"</1>, </2>, </3/0>, </4>, </5>">>},
+        [],
+        MsgId1),
+    #coap_message{method = Method1, payload=Payload1} = test_recv_coap_response(UdpSock),
+    ?assertEqual({ok,created}, Method1),
+    ?assertEqual(<<"/rd/0">>, Payload1),
+    timer:sleep(50),
+    SubTopic = list_to_binary("lwm2m/"++Epn++"/command"),
+    ?assertEqual([SubTopic], test_mqtt_broker:get_subscrbied_topics()),
+
+
+    % step2,  send a WRITE command to device
+    CommandTopic = <<"lwm2m/", (list_to_binary(Epn))/binary, "/command">>,
+    CmdId = 307,
+    Command = #{?MQ_COMMAND_ID         => CmdId,
+                ?MQ_COMMAND            => <<"Discover">>,
+                ?MQ_OBJECT_ID          => 3,  % Device,
+                ?MQ_OBJECT_INSTANCE_ID => 0,
+                ?MQ_RESOURCE_ID        => 7   % Power Source Voltage
+                },
+    CommandJson = jsx:encode(Command),
+    test_mqtt_broker:dispatch(CommandTopic, CommandJson, CommandTopic),
+    timer:sleep(50),
+    Request2 = test_recv_coap_request(UdpSock),
+    #coap_message{method = Method2, options=Options2, payload=Payload2} = Request2,
+    Path2 = get_coap_path(Options2),
+    ?assertEqual(get, Method2),
+    ?assertEqual(<<"/3/0/7">>, Path2),
+    ?assertEqual(<<>>, Payload2),
+    timer:sleep(50),
+
+    PayloadDiscover = <<"</3/0/7>;dim=8;pmin=10;pmax=60;gt=50;lt=42.2">>,
+    test_send_coap_response(UdpSock,
+                            "127.0.0.1",
+                            ?PORT,
+                            {ok, content},
+                            #coap_content{format = <<"application/link-format">>, payload = PayloadDiscover},
+                            Request2),
+    timer:sleep(100),
+
+    PubTopic = list_to_binary("lwm2m/"++Epn++"/response"),
+    ReadResult = jsx:encode(#{  ?MQ_COMMAND_ID         => CmdId,
+                                ?MQ_OBJECT_ID          => 3,  % Device
+                                ?MQ_OBJECT_INSTANCE_ID => 0,
+                                ?MQ_RESOURCE_ID        => 7,  % Power Source Voltage
+                                ?MQ_VALUE_TYPE         => <<"text">>,
+                                ?MQ_VALUE              => PayloadDiscover
+                            }),
+    ?assertEqual({PubTopic, ReadResult}, test_mqtt_broker:get_published_msg()),
+
+    test_close_udp_socket(UdpSock),
+    ok = application:stop(emq_lwm2m),
+    ok = application:stop(gen_coap),
+    test_mqtt_broker:stop().
 
 
 

@@ -34,3 +34,12 @@
 
 
 
+-define(LWM2M_FORMAT_PLAIN_TEXT, 0).
+-define(LWM2M_FORMAT_LINK, 40).
+-define(LWM2M_FORMAT_OPAQUE, 42).
+-define(LWM2M_FORMAT_TLV, 11542).
+-define(LWMWM_FORMAT_JSON, 11543).
+
+
+
+
