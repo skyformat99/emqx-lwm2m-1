@@ -27,6 +27,7 @@
 -define(LOG(Level, Format, Args),
     lager:Level("LWM2M-OBJ: " ++ Format, Args)).
 
+% This module is for future use. Disabled now.
 
 get_obj_def(ObjectIdInt, true) ->
     emq_lwm2m_xml_object_db:find_objectid(ObjectIdInt);

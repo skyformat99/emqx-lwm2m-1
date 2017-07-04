@@ -71,23 +71,23 @@ init([]) ->
     ets:new(?ETS_LOCATION_TAB, [set, named_table, protected]),
     {ok, #state{}}.
 
-handle_call({register_name, Name}, _From, State=#state{next_id = Id}) ->
-    case ets:lookup(?ETS_EPN_TAB, Name) of
+handle_call({register_name, Epn}, _From, State=#state{next_id = LocationId}) ->
+    case ets:lookup(?ETS_EPN_TAB, Epn) of
         [] ->
-            ets:insert(?ETS_EPN_TAB, {Name, Id}),
-            ets:insert(?ETS_LOCATION_TAB, {Id, Name}),
-            {reply, Id, State#state{next_id = Id+1}};
-        [{Name, Id}]  ->
-            {reply, Id, State}
+            ets:insert(?ETS_EPN_TAB, {Epn, LocationId}),
+            ets:insert(?ETS_LOCATION_TAB, {LocationId, Epn}),
+            {reply, LocationId, State#state{next_id = LocationId+1}};
+        [{Epn, LocationId2}]  ->
+            {reply, LocationId2, State}
     end;
 
-handle_call({unregister_name, Location}, _From, State) ->
-    case ets:lookup(?ETS_LOCATION_TAB, Location) of
+handle_call({unregister_name, LocationId}, _From, State) ->
+    case ets:lookup(?ETS_LOCATION_TAB, LocationId) of
         [] ->
             ok;
-        [{Location, Name}] ->
-            ets:delete(?ETS_EPN_TAB, Name),
-            ets:delete(?ETS_LOCATION_TAB, Location)
+        [{LocationId, Epn}] ->
+            ets:delete(?ETS_EPN_TAB, Epn),
+            ets:delete(?ETS_LOCATION_TAB, LocationId)
     end,
 	{reply, ok, State};
 

@@ -1,19 +1,19 @@
-{mapping, "coap.port", "emq_coap.port", [
+{mapping, "lwm2m.port", "emq_lwm2m.port", [
   {datatype, integer}
 ]}.
 
 
-{mapping, "coap.keepalive", "emq_coap.keepalive", [
+{mapping, "lwm2m.keepalive", "emq_lwm2m.keepalive", [
   {default, "120s"},
   {datatype, {duration, s}}
 ]}.
 
 
-{mapping, "coap.keyfile", "emq_coap.keyfile", [
+{mapping, "lwm2m.keyfile", "emq_lwm2m.keyfile", [
   {datatype, string}
 ]}.
 
-{mapping, "coap.certfile", "emq_coap.certfile", [
+{mapping, "lwm2m.certfile", "emq_lwm2m.certfile", [
   {datatype, string}
 ]}.
 

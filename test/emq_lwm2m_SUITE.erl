@@ -61,6 +61,7 @@ case01_register(_Config) ->
 
     test_close_udp_socket(UdpSock),
     ok = application:stop(emq_lwm2m),
+    ok = application:stop(gen_coap),
     test_mqtt_broker:stop().
 
 
@@ -99,9 +100,10 @@ case10_read(_Config) ->
     CommandTopic = <<"lwm2m/", (list_to_binary(Epn))/binary, "/command">>,
     Command = #{?MQ_COMMAND_ID         => CmdId,
                 ?MQ_COMMAND            => <<"Read">>,
-                ?MQ_OBJECT_ID          => <<"Device">>,
+                ?MQ_OBJECT_ID          => 3,  % Device
                 ?MQ_OBJECT_INSTANCE_ID => 0,
-                ?MQ_RESOURCE_ID        => <<"Manufacturer">>},
+                ?MQ_RESOURCE_ID        => 0   % Manufacturer
+                },
     CommandJson = jsx:encode(Command),
     test_mqtt_broker:dispatch(CommandTopic, CommandJson, CommandTopic),
     timer:sleep(50),
@@ -118,9 +120,9 @@ case10_read(_Config) ->
 
     PubTopic = list_to_binary("lwm2m/"++Epn++"/response"),
     ReadResult = jsx:encode(#{  ?MQ_COMMAND_ID          => CmdId,
-                                ?MQ_OBJECT_ID           => <<"Device">>,
+                                ?MQ_OBJECT_ID           => 3,  % Device,
                                 ?MQ_OBJECT_INSTANCE_ID  => 0,
-                                ?MQ_RESOURCE_ID         => <<"Manufacturer">>,
+                                ?MQ_RESOURCE_ID         => 0,  % Manufacturer,
                                 ?MQ_VALUE_TYPE          => <<"text">>,
                                 ?MQ_VALUE               => <<"EMQ">>
                              }),
@@ -128,6 +130,7 @@ case10_read(_Config) ->
 
     test_close_udp_socket(UdpSock),
     ok = application:stop(emq_lwm2m),
+    ok = application:stop(gen_coap),
     test_mqtt_broker:stop().
 
 
@@ -163,9 +166,9 @@ case20_write(_Config) ->
     CmdId = 307,
     Command = #{?MQ_COMMAND_ID         => CmdId,
                 ?MQ_COMMAND            => <<"Write">>,
-                ?MQ_OBJECT_ID          => <<"Device">>,
+                ?MQ_OBJECT_ID          => 3, % Device,
                 ?MQ_OBJECT_INSTANCE_ID => 0,
-                ?MQ_RESOURCE_ID        => <<"Current Time">>,
+                ?MQ_RESOURCE_ID        => 13, % Current Time,
                 ?MQ_VALUE_TYPE         => <<"text">>,
                 ?MQ_VALUE              => 12345},
     CommandJson = jsx:encode(Command),
@@ -184,15 +187,16 @@ case20_write(_Config) ->
 
     PubTopic = list_to_binary("lwm2m/"++Epn++"/response"),
     ReadResult = jsx:encode(#{  ?MQ_COMMAND_ID         => CmdId,
-                                ?MQ_OBJECT_ID          => <<"Device">>,
+                                ?MQ_OBJECT_ID          => 3, % Device,
                                 ?MQ_OBJECT_INSTANCE_ID => 0,
-                                ?MQ_RESOURCE_ID        => <<"Current Time">>,
+                                ?MQ_RESOURCE_ID        => 13, % Current Time,
                                 ?MQ_RESULT             => <<"Changed">>
                             }),
     ?assertEqual({PubTopic, ReadResult}, test_mqtt_broker:get_published_msg()),
 
     test_close_udp_socket(UdpSock),
     ok = application:stop(emq_lwm2m),
+    ok = application:stop(gen_coap),
     test_mqtt_broker:stop().
 
 
@@ -229,9 +233,9 @@ case30_execute(_Config) ->
     CmdId = 307,
     Command = #{?MQ_COMMAND_ID         => CmdId,
                 ?MQ_COMMAND            => <<"Execute">>,
-                ?MQ_OBJECT_ID          => <<"Device">>,
+                ?MQ_OBJECT_ID          => 3,  % Device,
                 ?MQ_OBJECT_INSTANCE_ID => 0,
-                ?MQ_RESOURCE_ID        => <<"Reboot">>
+                ?MQ_RESOURCE_ID        => 4   % Reboot
                 },
     CommandJson = jsx:encode(Command),
     test_mqtt_broker:dispatch(CommandTopic, CommandJson, CommandTopic),
@@ -249,15 +253,16 @@ case30_execute(_Config) ->
 
     PubTopic = list_to_binary("lwm2m/"++Epn++"/response"),
     ReadResult = jsx:encode(#{  ?MQ_COMMAND_ID         => CmdId,
-        ?MQ_OBJECT_ID          => <<"Device">>,
+        ?MQ_OBJECT_ID          => 3,  % Device
         ?MQ_OBJECT_INSTANCE_ID => 0,
-        ?MQ_RESOURCE_ID        => <<"Reboot">>,
+        ?MQ_RESOURCE_ID        => 4,  % Reboot
         ?MQ_RESULT             => <<"Changed">>
     }),
     ?assertEqual({PubTopic, ReadResult}, test_mqtt_broker:get_published_msg()),
 
     test_close_udp_socket(UdpSock),
     ok = application:stop(emq_lwm2m),
+    ok = application:stop(gen_coap),
     test_mqtt_broker:stop().
 
 

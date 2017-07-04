@@ -119,18 +119,18 @@ coap_execute_response_to_mqtt_payload(Ref, {error, Error}) ->
 
 
 
-build_path({ObjectName, undefined, undefined}) ->
-    ObjDef = emq_lwm2m_xml_object:get_obj_def(ObjectName, false),
-    Oid = emq_lwm2m_xml_object:get_object_id(ObjDef),
-    make_path("/~s", [Oid]);
-build_path({ObjectName, ObjectInstanceId, undefined}) ->
-    ObjDef = emq_lwm2m_xml_object:get_obj_def(ObjectName, false),
-    Oid = emq_lwm2m_xml_object:get_object_id(ObjDef),
-    make_path("/~s/~b", [Oid, ObjectInstanceId]);
-build_path({ObjectName, ObjectInstanceId, ResourceId}) ->
-    ObjDef = emq_lwm2m_xml_object:get_obj_def(ObjectName, false),
-    {Oid, Rid} = emq_lwm2m_xml_object:get_object_and_resource_id(ResourceId, ObjDef),
-    make_path("/~s/~b/~s", [Oid, ObjectInstanceId, Rid]).
+build_path({ObjectId, undefined, undefined}) ->
+    %ObjDef = emq_lwm2m_xml_object:get_obj_def(ObjectName, false),
+    %Oid = emq_lwm2m_xml_object:get_object_id(ObjDef),
+    make_path("/~b", [ObjectId]);
+build_path({ObjectId, ObjectInstanceId, undefined}) ->
+    %ObjDef = emq_lwm2m_xml_object:get_obj_def(ObjectName, false),
+    %Oid = emq_lwm2m_xml_object:get_object_id(ObjDef),
+    make_path("/~b/~b", [ObjectId, ObjectInstanceId]);
+build_path({ObjectId, ObjectInstanceId, ResourceId}) ->
+    %ObjDef = emq_lwm2m_xml_object:get_obj_def(ObjectName, false),
+    %{Oid, Rid} = emq_lwm2m_xml_object:get_object_and_resource_id(ResourceId, ObjDef),
+    make_path("/~b/~b/~b", [ObjectId, ObjectInstanceId, ResourceId]).
 
 
 make_path(Format, Args) ->
