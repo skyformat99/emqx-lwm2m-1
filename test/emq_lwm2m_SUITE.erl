@@ -97,7 +97,11 @@ case10_read(_Config) ->
     % step2,  send a READ command to device
     CmdId = 206,
     CommandTopic = <<"lwm2m/", (list_to_binary(Epn))/binary, "/command">>,
-    Command = [{?MQ_COMMAND, <<"Read">>}, {?MQ_OBJECT_ID, <<"Device">>}, {?MQ_OBJECT_INSTANCE_ID, 0}, {?MQ_RESOURCE_ID, <<"Manufacturer">>}, {?MQ_COMMAND_ID, CmdId}],
+    Command = #{?MQ_COMMAND_ID         => CmdId,
+                ?MQ_COMMAND            => <<"Read">>,
+                ?MQ_OBJECT_ID          => <<"Device">>,
+                ?MQ_OBJECT_INSTANCE_ID => 0,
+                ?MQ_RESOURCE_ID        => <<"Manufacturer">>},
     CommandJson = jsx:encode(Command),
     test_mqtt_broker:dispatch(CommandTopic, CommandJson, CommandTopic),
     timer:sleep(50),
@@ -113,7 +117,13 @@ case10_read(_Config) ->
     timer:sleep(100),
 
     PubTopic = list_to_binary("lwm2m/"++Epn++"/response"),
-    ReadResult = jsx:encode(#{<<"Response">> => <<"EMQ">>}),
+    ReadResult = jsx:encode(#{  ?MQ_COMMAND_ID         => CmdId,
+                                ?MQ_OBJECT_ID          => <<"Device">>,
+                                ?MQ_OBJECT_INSTANCE_ID => 0,
+                                ?MQ_RESULT             => #{?MQ_RESOURCE_ID => <<"Manufacturer">>,
+                                                            ?MQ_VALUE_TYPE => <<"text">>,
+                                                            ?MQ_VALUE => <<"EMQ">>}
+                             }),
     ?assertEqual({PubTopic, ReadResult}, test_mqtt_broker:get_published_msg()),
 
     test_close_udp_socket(UdpSock),

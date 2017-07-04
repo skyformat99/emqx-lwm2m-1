@@ -41,8 +41,8 @@ Uplink response topic is "lwm2m/{?device_end_point_name}/response".
 ## Value Type
 Value may have following type:
 - text - ascii text format of int, float, string, boolean
-- binary - data is arbitrary binary which is base64-encoded
-- json - json format of multi-resource
+- binary - data is arbitrary binary which is base64-encoded.
+- json - json format of multi-resource. NOT support now.
 
 
 ### READ command
@@ -120,6 +120,9 @@ Response
 - {?CmdID}, an integer to identify a command response against its request.
 - {?Code} could be "Changed", "Bad Request", "Not Found", "Unauthorized" or "Method Not Allowed"
 
+
+## NOTES
+TLS or JSON format from lwm2m device are not supported now.
 
 
 DTLS

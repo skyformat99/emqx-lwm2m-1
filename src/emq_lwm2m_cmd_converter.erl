@@ -47,44 +47,29 @@ mqtt_payload_to_coap_request(InputCmd = #{?MQ_COMMAND := <<"Write">>, ?MQ_VALUE 
                 end,
     {coap_message:request(con, Method, Payload, [{uri_path, Path}]), InputCmd}.
 
-coap_response_to_mqtt_payload(CoapPayload, <<"text/plain">>, #{?MQ_COMMAND_ID := CmdId, ?MQ_OBJECT_ID := ObjId, ?MQ_OBJECT_INSTANCE_ID := ObjInsId, ?MQ_RESOURCE_ID := ResId}) ->
+coap_response_to_mqtt_payload(CoapPayload, <<"text/plain">>, Ref=#{?MQ_COMMAND_ID := CmdId, ?MQ_RESOURCE_ID := _ResId}) ->
     ?LOG(debug, "coap_response_to_mqtt_payload CoapPayload=~p, CmdId=~p", [CoapPayload, CmdId]),
-    jsx:encode(#{?MQ_COMMAND_ID => CmdId,
-                 ?MQ_OBJECT_ID => ObjId,
-                 ?MQ_OBJECT_INSTANCE_ID => ObjInsId,
-                 ?MQ_RESULT => #{?MQ_RESOURCE_ID => ResId, ?MQ_VALUE_TYPE => <<"text">>,  ?MQ_VALUE => CoapPayload}});
-coap_response_to_mqtt_payload(CoapPayload, <<"application/octet-stream">>, #{?MQ_COMMAND_ID := CmdId, ?MQ_OBJECT_ID := ObjId, ?MQ_OBJECT_INSTANCE_ID := ObjInsId, ?MQ_RESOURCE_ID := ResId}) ->
+    make_resource_json(Ref, <<"text">>, CoapPayload);
+coap_response_to_mqtt_payload(CoapPayload, <<"text/plain">>, #{?MQ_COMMAND_ID := CmdId}) ->
+    ?LOG(error, "coap_response_to_mqtt_payload discard CoapPayload=~p, CmdId=~p due to missing resource id", [CoapPayload, CmdId]),
+    error("plain text needs a resource id");
+coap_response_to_mqtt_payload(CoapPayload, <<"application/octet-stream">>, Ref=#{?MQ_COMMAND_ID := CmdId, ?MQ_RESOURCE_ID := _ResId}) ->
     ?LOG(debug, "coap_response_to_mqtt_payload CoapPayload=~p, CmdId=~p", [CoapPayload, CmdId]),
     Data = base64:encode(CoapPayload),
-    jsx:encode(#{?MQ_COMMAND_ID => CmdId,
-                 ?MQ_OBJECT_ID => ObjId,
-                 ?MQ_OBJECT_INSTANCE_ID => ObjInsId,
-                 ?MQ_RESULT => #{?MQ_RESOURCE_ID => ResId, ?MQ_VALUE_TYPE => <<"binary">>,  ?MQ_VALUE => Data}});
-coap_response_to_mqtt_payload(CoapPayload, <<"application/vnd.oma.lwm2m+tlv">>, #{?MQ_COMMAND_ID := CmdId, ?MQ_OBJECT_ID := ObjId, ?MQ_OBJECT_INSTANCE_ID := ObjInsId, ?MQ_RESOURCE_ID := ResId}) ->
+    make_resource_json(Ref, <<"binary">>, Data);
+coap_response_to_mqtt_payload(CoapPayload, <<"application/octet-stream">>, #{?MQ_COMMAND_ID := CmdId}) ->
+    ?LOG(error, "coap_response_to_mqtt_payload discard CoapPayload=~p, CmdId=~p due to missing resource id", [CoapPayload, CmdId]),
+    error("opaque needs a resource id");
+coap_response_to_mqtt_payload(CoapPayload, <<"application/vnd.oma.lwm2m+tlv">>, Ref=#{?MQ_COMMAND_ID := CmdId, ?MQ_RESOURCE_ID := _ResId}) ->
     ?LOG(debug, "coap_response_to_mqtt_payload CoapPayload=~p, CmdId=~p", [CoapPayload, CmdId]),
     % todo: support tls
-    error("not support tls"),
-    jsx:encode(#{?MQ_COMMAND_ID => CmdId,
-        ?MQ_OBJECT_ID => ObjId,
-        ?MQ_OBJECT_INSTANCE_ID => ObjInsId,
-        ?MQ_RESULT => #{?MQ_RESOURCE_ID => ResId, ?MQ_VALUE_TYPE => <<"text">>,  ?MQ_VALUE => CoapPayload}});
-coap_response_to_mqtt_payload(CoapPayload, <<"application/vnd.oma.lwm2m+json">>, #{?MQ_COMMAND_ID := CmdId, ?MQ_OBJECT_ID := ObjId, ?MQ_OBJECT_INSTANCE_ID := ObjInsId, ?MQ_RESOURCE_ID := ResId}) ->
+    error("not support tlv"),
+    make_resource_json(Ref, <<"json">>, CoapPayload);
+coap_response_to_mqtt_payload(CoapPayload, <<"application/vnd.oma.lwm2m+json">>, Ref=#{?MQ_COMMAND_ID := CmdId, ?MQ_RESOURCE_ID := _ResId}) ->
     ?LOG(debug, "coap_response_to_mqtt_payload CoapPayload=~p, CmdId=~p", [CoapPayload, CmdId]),
-    % todo: support json
-    error("not support json"),
-    jsx:encode(#{?MQ_COMMAND_ID => CmdId,
-        ?MQ_OBJECT_ID => ObjId,
-        ?MQ_OBJECT_INSTANCE_ID => ObjInsId,
-        ?MQ_RESULT => #{?MQ_RESOURCE_ID => ResId, ?MQ_VALUE_TYPE => <<"text">>,  ?MQ_VALUE => CoapPayload}});
-coap_response_to_mqtt_payload(CoapPayload, DataFormat, #{?MQ_COMMAND_ID := CmdId, ?MQ_OBJECT_ID := ObjId, ?MQ_OBJECT_INSTANCE_ID := ObjInsId}) ->
-    ?LOG(debug, "coap_response_to_mqtt_payload CoapPayload=~p, CmdId=~p", [CoapPayload, CmdId]),
-    % TODO: CoapPayload is a tlv or json
-    error("not support @7830682240"),
-    jsx:encode(#{?MQ_COMMAND_ID => CmdId,
-                 ?MQ_OBJECT_ID => ObjId,
-                 ?MQ_OBJECT_INSTANCE_ID => ObjInsId,
-                 ?MQ_RESULT => #{?MQ_RESOURCE_ID => CmdId, ?MQ_VALUE => CoapPayload}}).
-
+    % todo: support tls
+    error("not support tlv"),
+    make_resource_json(Ref, <<"json">>, CoapPayload).
 
 
 
@@ -114,6 +99,19 @@ get_oid_rid(MqttPayload) ->
     % they are all binary type
     {ObjectId, ObjectInstanceId, ResourceId}.
 
+make_resource_json(Ref=#{}, Type, Value) ->
+    jsx:encode(#{?MQ_COMMAND_ID => maps:get(?MQ_COMMAND_ID, Ref),
+                 ?MQ_OBJECT_ID => maps:get(?MQ_OBJECT_ID, Ref),
+                 ?MQ_OBJECT_INSTANCE_ID => maps:get(?MQ_OBJECT_INSTANCE_ID, Ref),
+                 ?MQ_RESULT => #{?MQ_RESOURCE_ID => maps:get(?MQ_RESOURCE_ID, Ref),
+                                 ?MQ_VALUE_TYPE => Type,
+                                 ?MQ_VALUE => Value}}).
 
-
+make_object_json(Ref=#{}, Type, Value) ->
+    jsx:encode(#{?MQ_COMMAND_ID => maps:get(?MQ_COMMAND_ID, Ref),
+                 ?MQ_OBJECT_ID => maps:get(?MQ_OBJECT_ID, Ref),
+                 ?MQ_OBJECT_INSTANCE_ID => maps:get(?MQ_OBJECT_INSTANCE_ID, Ref),
+                 ?MQ_RESULT => #{
+                    % TODO: fill in mutilple resources
+                 }}).
 
