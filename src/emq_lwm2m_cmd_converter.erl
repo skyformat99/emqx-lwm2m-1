@@ -21,7 +21,7 @@
 -include("emq_lwm2m.hrl").
 -include_lib("gen_coap/include/coap.hrl").
 
--export([mqtt_payload_to_coap_request/1, coap_response_to_mqtt_payload/3]).
+-export([mqtt_payload_to_coap_request/1, coap_response_to_mqtt_payload/4]).
 
 
 -define(LOG(Level, Format, Args),
@@ -37,39 +37,74 @@ mqtt_payload_to_coap_request(InputCmd = #{?MQ_COMMAND := <<"Write">>, ?MQ_VALUE 
     Path = build_path({ObjectId, ObjectInstanceId, ResourceId}),
     Method = case ResourceId of
                  undefined -> post;
-                 _Other    -> put
+                 _         -> put
              end,
-    Payload =   if
-                    is_integer(Value) -> list_to_binary(io_lib:format("~b", [Value]));
-                    is_float(Value)   -> list_to_binary(io_lib:format("~f", [Value]));
-                    is_list(Value)    -> list_to_binary(Value);
-                    is_binary(Value)  -> Value
-                end,
-    {coap_message:request(con, Method, Payload, [{uri_path, Path}]), InputCmd}.
+    case ResourceId of
+        undefined -> process_write_object_command(Method, Path, InputCmd);
+        _Other    -> process_write_resource_command(Method, Path, InputCmd)
+    end.
 
-coap_response_to_mqtt_payload(CoapPayload, <<"text/plain">>, Ref=#{?MQ_COMMAND_ID := CmdId, ?MQ_RESOURCE_ID := _ResId}) ->
-    ?LOG(debug, "coap_response_to_mqtt_payload CoapPayload=~p, CmdId=~p", [CoapPayload, CmdId]),
-    make_resource_json(Ref, <<"text">>, CoapPayload);
-coap_response_to_mqtt_payload(CoapPayload, <<"text/plain">>, #{?MQ_COMMAND_ID := CmdId}) ->
+
+coap_response_to_mqtt_payload(Method, CoapPayload, Format, Ref=#{?MQ_COMMAND := <<"Read">>}) ->
+    ?LOG(debug, "coap_response_to_mqtt_payload read Method=~p, CoapPayload=~p, Format=~p, Ref=~p", [Method, CoapPayload, Format, Ref]),
+    coap_read_response_to_mqtt_payload(Method, CoapPayload, Format, Ref);
+coap_response_to_mqtt_payload(Method, CoapPayload, Format, Ref=#{?MQ_COMMAND := <<"Write">>}) ->
+    ?LOG(debug, "coap_response_to_mqtt_payload write Method=~p, CoapPayload=~p, Format=~p, Ref=~p", [Method, CoapPayload, Format, Ref]),
+    coap_write_response_to_mqtt_payload(Ref, Method).
+
+
+
+coap_read_response_to_mqtt_payload({error, Error}, _CoapPayload, _Format, Ref) ->
+    make_read_resource_error(Ref, error_code(Error));
+coap_read_response_to_mqtt_payload({ok, content}, CoapPayload, Format, Ref) ->
+    coap_read_response_to_mqtt_payload2(CoapPayload, Format, Ref).
+
+
+coap_read_response_to_mqtt_payload2(CoapPayload, Format, Ref=#{?MQ_RESOURCE_ID := _ResId}) ->
+    coap_read_resource_response_to_mqtt_payload(CoapPayload, Format, Ref);
+coap_read_response_to_mqtt_payload2(CoapPayload, Format, Ref=#{}) ->
+    coap_read_object_response_to_mqtt_payload(CoapPayload, Format, Ref).
+
+
+coap_read_resource_response_to_mqtt_payload(CoapPayload, <<"text/plain">>, Ref) ->
+    make_read_resource_response(Ref, <<"text">>, CoapPayload);
+coap_read_resource_response_to_mqtt_payload(CoapPayload, <<"application/octet-stream">>, Ref) ->
+    % CoapPayload is base64-encoded, no transformation is needed
+    make_read_resource_response(Ref, <<"binary">>, CoapPayload);
+coap_read_resource_response_to_mqtt_payload(CoapPayload, <<"application/vnd.oma.lwm2m+tlv">>, Ref) ->
+    % todo: support tls
+    error("not support tlv"),
+    make_read_resource_response(Ref, <<"json">>, CoapPayload);
+coap_read_resource_response_to_mqtt_payload(CoapPayload, <<"application/vnd.oma.lwm2m+json">>, Ref) ->
+    % todo: support tls
+    error("not support json"),
+    make_read_resource_response(Ref, <<"json">>, CoapPayload).
+
+
+coap_read_object_response_to_mqtt_payload(CoapPayload, <<"text/plain">>, #{?MQ_COMMAND_ID := CmdId, ?MQ_COMMAND := <<"Read">>}) ->
     ?LOG(error, "coap_response_to_mqtt_payload discard CoapPayload=~p, CmdId=~p due to missing resource id", [CoapPayload, CmdId]),
     error("plain text needs a resource id");
-coap_response_to_mqtt_payload(CoapPayload, <<"application/octet-stream">>, Ref=#{?MQ_COMMAND_ID := CmdId, ?MQ_RESOURCE_ID := _ResId}) ->
-    ?LOG(debug, "coap_response_to_mqtt_payload CoapPayload=~p, CmdId=~p", [CoapPayload, CmdId]),
-    Data = base64:encode(CoapPayload),
-    make_resource_json(Ref, <<"binary">>, Data);
-coap_response_to_mqtt_payload(CoapPayload, <<"application/octet-stream">>, #{?MQ_COMMAND_ID := CmdId}) ->
+coap_read_object_response_to_mqtt_payload(CoapPayload, <<"application/octet-stream">>, #{?MQ_COMMAND_ID := CmdId}) ->
     ?LOG(error, "coap_response_to_mqtt_payload discard CoapPayload=~p, CmdId=~p due to missing resource id", [CoapPayload, CmdId]),
     error("opaque needs a resource id");
-coap_response_to_mqtt_payload(CoapPayload, <<"application/vnd.oma.lwm2m+tlv">>, Ref=#{?MQ_COMMAND_ID := CmdId, ?MQ_RESOURCE_ID := _ResId}) ->
-    ?LOG(debug, "coap_response_to_mqtt_payload CoapPayload=~p, CmdId=~p", [CoapPayload, CmdId]),
+coap_read_object_response_to_mqtt_payload(CoapPayload, <<"application/vnd.oma.lwm2m+tls">>, Ref) ->
     % todo: support tls
     error("not support tlv"),
-    make_resource_json(Ref, <<"json">>, CoapPayload);
-coap_response_to_mqtt_payload(CoapPayload, <<"application/vnd.oma.lwm2m+json">>, Ref=#{?MQ_COMMAND_ID := CmdId, ?MQ_RESOURCE_ID := _ResId}) ->
-    ?LOG(debug, "coap_response_to_mqtt_payload CoapPayload=~p, CmdId=~p", [CoapPayload, CmdId]),
+    make_read_resource_response(Ref, <<"json">>, CoapPayload);
+coap_read_object_response_to_mqtt_payload(CoapPayload, <<"application/vnd.oma.lwm2m+json">>, Ref) ->
     % todo: support tls
     error("not support tlv"),
-    make_resource_json(Ref, <<"json">>, CoapPayload).
+    make_read_resource_response(Ref, <<"json">>, CoapPayload).
+
+
+
+coap_write_response_to_mqtt_payload(Ref, {ok, changed}) ->
+    make_write_resource_response(Ref, <<"Changed">>);
+coap_write_response_to_mqtt_payload(Ref, {error, Error}) ->
+    make_write_resource_response(Ref, error_code(Error)).
+
+
+
 
 
 
@@ -99,19 +134,76 @@ get_oid_rid(MqttPayload) ->
     % they are all binary type
     {ObjectId, ObjectInstanceId, ResourceId}.
 
-make_resource_json(Ref=#{}, Type, Value) ->
-    jsx:encode(#{?MQ_COMMAND_ID => maps:get(?MQ_COMMAND_ID, Ref),
-                 ?MQ_OBJECT_ID => maps:get(?MQ_OBJECT_ID, Ref),
-                 ?MQ_OBJECT_INSTANCE_ID => maps:get(?MQ_OBJECT_INSTANCE_ID, Ref),
-                 ?MQ_RESULT => #{?MQ_RESOURCE_ID => maps:get(?MQ_RESOURCE_ID, Ref),
-                                 ?MQ_VALUE_TYPE => Type,
-                                 ?MQ_VALUE => Value}}).
+make_read_resource_response(Ref=#{}, Type, Value) ->
+    jsx:encode(#{
+                    ?MQ_COMMAND_ID          => maps:get(?MQ_COMMAND_ID, Ref),
+                    ?MQ_OBJECT_ID           => maps:get(?MQ_OBJECT_ID, Ref),
+                    ?MQ_OBJECT_INSTANCE_ID  => maps:get(?MQ_OBJECT_INSTANCE_ID, Ref),
+                    ?MQ_RESOURCE_ID         => maps:get(?MQ_RESOURCE_ID, Ref),
+                    ?MQ_VALUE_TYPE          => Type,
+                    ?MQ_VALUE               => Value
+                }).
 
-make_object_json(Ref=#{}, Type, Value) ->
-    jsx:encode(#{?MQ_COMMAND_ID => maps:get(?MQ_COMMAND_ID, Ref),
-                 ?MQ_OBJECT_ID => maps:get(?MQ_OBJECT_ID, Ref),
-                 ?MQ_OBJECT_INSTANCE_ID => maps:get(?MQ_OBJECT_INSTANCE_ID, Ref),
-                 ?MQ_RESULT => #{
-                    % TODO: fill in mutilple resources
-                 }}).
+
+make_read_resource_error(Ref=#{}, Error) ->
+    jsx:encode(#{
+        ?MQ_COMMAND_ID          => maps:get(?MQ_COMMAND_ID, Ref),
+        ?MQ_OBJECT_ID           => maps:get(?MQ_OBJECT_ID, Ref),
+        ?MQ_OBJECT_INSTANCE_ID  => maps:get(?MQ_OBJECT_INSTANCE_ID, Ref),
+        ?MQ_RESOURCE_ID         => maps:get(?MQ_RESOURCE_ID, Ref),
+        ?MQ_VALUE               => Error
+    }).
+
+
+
+
+make_write_resource_response(Ref=#{}, Result) ->
+    ?LOG(debug, "make_write_resource_response Ref=~p, Result=~p", [Ref, Result]),
+    jsx:encode(#{
+                    ?MQ_COMMAND_ID          => maps:get(?MQ_COMMAND_ID, Ref),
+                    ?MQ_OBJECT_ID           => maps:get(?MQ_OBJECT_ID, Ref),
+                    ?MQ_OBJECT_INSTANCE_ID  => maps:get(?MQ_OBJECT_INSTANCE_ID, Ref),
+                    ?MQ_RESOURCE_ID         => maps:get(?MQ_RESOURCE_ID, Ref),
+                    ?MQ_RESULT              => Result
+                }).
+
+
+process_write_object_command(Method, Path, InputCmd) ->
+    ?LOG(debug, "process_write_object_command Method=~p, Path=~p, InputCmd=~p", [Method, Path, InputCmd]),
+    error("not support now").
+
+
+process_write_resource_command(Method, Path, InputCmd=#{?MQ_VALUE_TYPE := Type, ?MQ_VALUE := Value}) ->
+    Payload =   case Type of
+                    <<"text">>   -> to_binary(Value);
+                    <<"binary">> -> to_binary(Value);
+                    <<"json">>   -> error("not support now")
+                end,
+    {coap_message:request(con, Method, Payload, [{uri_path, Path}]), InputCmd}.
+
+
+error_code(not_acceptable) ->
+    <<"Not Acceptable">>;
+error_code(method_not_allowed) ->
+    <<"Method Not Allowed">>;
+error_code(not_found) ->
+    <<"Not Found">>;
+error_code(uauthorized) ->
+    <<"Unauthorized">>;
+error_code(bad_request) ->
+    <<"Bad Request">>.
+
+
+to_binary(true) ->
+    <<"1">>;
+to_binary(false) ->
+    <<"0">>;
+to_binary(Value) when is_integer(Value) ->
+    list_to_binary(io_lib:format("~b", [Value]));
+to_binary(Value) when is_float(Value) ->
+    list_to_binary(io_lib:format("~f", [Value]));
+to_binary(Value) when is_list(Value) ->
+    list_to_binary(Value);
+to_binary(Value) when is_binary(Value) ->
+    Value.
 

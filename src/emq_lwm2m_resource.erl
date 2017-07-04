@@ -98,9 +98,9 @@ handle_info({dispatch_command, CoapRequest, Ref}, _ObState) ->
     ?LOG(debug, "dispatch_command CoapRequest=~p, Ref=~p", [CoapRequest, Ref]),
     {send_request, CoapRequest, Ref};
 
-handle_info({coap_response, ChId, _Channel, Ref, #coap_message{payload = Payload, options = Options}}, ObState) ->
+handle_info({coap_response, ChId, _Channel, Ref, #coap_message{method = Method, payload = Payload, options = Options}}, ObState) ->
     DataFormat = data_format(Options),
-    emq_lwm2m_mqtt_adapter:publish(ChId, Payload, DataFormat, Ref),
+    emq_lwm2m_mqtt_adapter:publish(ChId, Method, Payload, DataFormat, Ref),
     {noreply, ObState};
 
 handle_info(Message, State) ->

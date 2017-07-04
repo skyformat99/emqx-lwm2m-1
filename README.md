@@ -46,6 +46,8 @@ Value may have following type:
 
 
 ### READ command
+
+#### Read resource
 ```
 {
     "CmdID": {?CmdID},
@@ -62,7 +64,41 @@ Response
     "CmdID": {?CmdID},
     "ObjectID":  {?ObjectName},
     "ObjectInstanceID": {?ObjectInstanceID},
-    "Result":
+    "ResourceID": {?ResourceID},
+    "ValueType": {?ValueType},
+    "Value": {?Value}
+}
+```
+or
+```
+{
+    "CmdID": {?CmdID},
+    "ObjectID":  {?ObjectName},
+    "ObjectInstanceID": {?ObjectInstanceID},
+    "ResourceID": {?ResourceID},
+    "ValueType": {?ValueType},
+    "Error": {?Error}
+}
+```
+
+
+#### Read Object - NOT SUPPORT YET
+```
+{
+    "CmdID": {?CmdID},
+    "Command": "Read",
+    "ObjectID":  {?ObjectName},
+    "ObjectInstanceID": {?ObjectInstanceID},
+}
+```
+
+Response
+```
+{
+    "CmdID": {?CmdID},
+    "ObjectID":  {?ObjectName},
+    "ObjectInstanceID": {?ObjectInstanceID},
+    "Values":
     [
         {
             "ResourceID": {?ResourceID},
@@ -73,14 +109,48 @@ Response
             "ResourceID": {?ResourceIDX},
             "ValueType": {?ValueTypeX},
             "Value": {?ValueX}
-        },
+        }
     ]
 }
 ```
 
 
-
 ### WRITE command
+#### Write resource
+```
+{
+    "CmdID": {?CmdID},
+    "Command": "Write",
+    "ObjectID":  {?ObjectName},
+    "ObjectInstanceID": {?ObjectInstanceID},
+    "ResourceID": {?ResourceID},
+    "ValueType": {?ValueType},
+    "Value": {?Value}
+}
+```
+- {?CmdID}, an integer to identify a command response against its request.
+- {?ObjectName}, a string represents object name, mandatory.
+- {?ObjectInstanceID}, an integer, optional.
+- {?ResourceID}, a string represents resource name, mandatory.
+- {?ValueType}, a string represents the value type of {?Value}, mandatory.
+- {?Value}, this parameter could be variant type as {?ValueType} specified, mandatory.
+
+
+Response
+```
+{
+    "CmdID": {?CmdID},
+    "ObjectID":  {?ObjectName},
+    "ObjectInstanceID": {?ObjectInstanceID},
+    "ResourceID": {?ResourceID},
+    "Result": {?Code}
+}
+```
+- {?CmdID}, an integer to identify a command response against its request.
+- {?Code} could be "Changed", "Bad Request", "Not Found", "Unauthorized" or "Method Not Allowed"
+
+
+#### Write Object - NOT SUPPORT YET
 ```
 {
     "CmdID": {?CmdID},
@@ -114,6 +184,8 @@ Response
 ```
 {
     "CmdID": {?CmdID},
+    "ObjectID":  {?ObjectName},
+    "ObjectInstanceID": {?ObjectInstanceID},
     "Result": {?Code}
 }
 ```

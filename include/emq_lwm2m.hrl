@@ -29,6 +29,7 @@
 
 -define(MQ_VALUE_TYPE,         <<"ValueType">>).
 -define(MQ_VALUE,              <<"Value">>).
+-define(MQ_ERROR,              <<"Error">>).
 -define(MQ_RESULT,             <<"Result">>).
 
 

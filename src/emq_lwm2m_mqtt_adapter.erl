@@ -26,7 +26,7 @@
 
 
 %% API.
--export([start_link/3, publish/4, keepalive/1]).
+-export([start_link/3, publish/5, keepalive/1]).
 -export([stop/1]).
 
 %% gen_server.
@@ -69,8 +69,8 @@ start_link(CoapPid, ClientId, ChId) ->
 stop(ChId) ->
     gen_server:stop(emq_lwm2m_registry:whereis_name(ChId)).
 
-publish(ChId, Response, DataFormat, Ref) ->
-    gen_server:call({via, emq_lwm2m_registry, ChId}, {publish, Response, DataFormat, Ref}).
+publish(ChId, Method, Response, DataFormat, Ref) ->
+    gen_server:call({via, emq_lwm2m_registry, ChId}, {publish, Method, Response, DataFormat, Ref}).
 
 keepalive(ChId)->
     gen_server:cast({via, emq_lwm2m_registry, ChId}, keepalive).
@@ -91,8 +91,8 @@ init({CoapPid, ClientId, ChId}) ->
             {stop, Other}
     end.
 
-handle_call({publish, CoapResponse, DataFormat, Ref}, _From, State=#state{proto = Proto, rsp_topic = Topic}) ->
-    Message = emq_lwm2m_cmd_converter:coap_response_to_mqtt_payload(CoapResponse, DataFormat, Ref),
+handle_call({publish, Method, CoapResponse, DataFormat, Ref}, _From, State=#state{proto = Proto, rsp_topic = Topic}) ->
+    Message = emq_lwm2m_cmd_converter:coap_response_to_mqtt_payload(Method, CoapResponse, DataFormat, Ref),
     NewProto = ?PROTO_PUBLISH(Topic, Message, Proto),
     {reply, ok, State#state{proto = NewProto}};
 
