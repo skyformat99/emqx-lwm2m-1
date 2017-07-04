@@ -42,7 +42,11 @@ mqtt_payload_to_coap_request(InputCmd = #{?MQ_COMMAND := <<"Write">>, ?MQ_VALUE 
     case ResourceId of
         undefined -> process_write_object_command(Method, Path, InputCmd);
         _Other    -> process_write_resource_command(Method, Path, InputCmd)
-    end.
+    end;
+mqtt_payload_to_coap_request(InputCmd = #{?MQ_COMMAND := <<"Execute">>}) ->
+    {ObjectId, ObjectInstanceId, ResourceId} = get_oid_rid(InputCmd),
+    Path = build_path({ObjectId, ObjectInstanceId, ResourceId}),
+    {coap_message:request(con, post, <<>>, [{uri_path, Path}]), InputCmd}.
 
 
 coap_response_to_mqtt_payload(Method, CoapPayload, Format, Ref=#{?MQ_COMMAND := <<"Read">>}) ->
@@ -50,7 +54,10 @@ coap_response_to_mqtt_payload(Method, CoapPayload, Format, Ref=#{?MQ_COMMAND := 
     coap_read_response_to_mqtt_payload(Method, CoapPayload, Format, Ref);
 coap_response_to_mqtt_payload(Method, CoapPayload, Format, Ref=#{?MQ_COMMAND := <<"Write">>}) ->
     ?LOG(debug, "coap_response_to_mqtt_payload write Method=~p, CoapPayload=~p, Format=~p, Ref=~p", [Method, CoapPayload, Format, Ref]),
-    coap_write_response_to_mqtt_payload(Ref, Method).
+    coap_write_response_to_mqtt_payload(Ref, Method);
+coap_response_to_mqtt_payload(Method, CoapPayload, Format, Ref=#{?MQ_COMMAND := <<"Execute">>}) ->
+    ?LOG(debug, "coap_response_to_mqtt_payload execute Method=~p, CoapPayload=~p, Format=~p, Ref=~p", [Method, CoapPayload, Format, Ref]),
+    coap_execute_response_to_mqtt_payload(Ref, Method).
 
 
 
@@ -105,6 +112,10 @@ coap_write_response_to_mqtt_payload(Ref, {error, Error}) ->
 
 
 
+coap_execute_response_to_mqtt_payload(Ref, {ok, changed}) ->
+    make_write_resource_response(Ref, <<"Changed">>);
+coap_execute_response_to_mqtt_payload(Ref, {error, Error}) ->
+    make_write_resource_response(Ref, error_code(Error)).
 
 
 
