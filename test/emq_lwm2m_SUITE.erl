@@ -32,7 +32,8 @@ all() -> [case01_register,
     case20_write,
     case30_execute,
     case40_discover,
-    case50_write_attribute].
+    case50_write_attribute,
+    case60_observe].
 
 
 
@@ -120,7 +121,7 @@ case10_read(_Config) ->
     ?assertEqual(<<>>, Payload2),
     timer:sleep(50),
 
-    test_send_coap_response(UdpSock, "127.0.0.1", ?PORT, {ok, content}, #coap_content{payload = <<"EMQ">>}, Request2),
+    test_send_coap_response(UdpSock, "127.0.0.1", ?PORT, {ok, content}, #coap_content{payload = <<"EMQ">>}, Request2, false),
     timer:sleep(100),
 
     PubTopic = list_to_binary("lwm2m/"++Epn++"/response"),
@@ -187,7 +188,7 @@ case20_write(_Config) ->
     ?assertEqual(<<"12345">>, Payload2),
     timer:sleep(50),
 
-    test_send_coap_response(UdpSock, "127.0.0.1", ?PORT, {ok, changed}, #coap_content{}, Request2),
+    test_send_coap_response(UdpSock, "127.0.0.1", ?PORT, {ok, changed}, #coap_content{}, Request2, false),
     timer:sleep(100),
 
     PubTopic = list_to_binary("lwm2m/"++Epn++"/response"),
@@ -253,7 +254,7 @@ case30_execute(_Config) ->
     ?assertEqual(<<>>, Payload2),
     timer:sleep(50),
 
-    test_send_coap_response(UdpSock, "127.0.0.1", ?PORT, {ok, changed}, #coap_content{}, Request2),
+    test_send_coap_response(UdpSock, "127.0.0.1", ?PORT, {ok, changed}, #coap_content{}, Request2, false),
     timer:sleep(100),
 
     PubTopic = list_to_binary("lwm2m/"++Epn++"/response"),
@@ -323,7 +324,8 @@ case40_discover(_Config) ->
                             ?PORT,
                             {ok, content},
                             #coap_content{format = <<"application/link-format">>, payload = PayloadDiscover},
-                            Request2),
+                            Request2,
+                            false),
     timer:sleep(100),
 
     PubTopic = list_to_binary("lwm2m/"++Epn++"/response"),
@@ -396,7 +398,8 @@ case50_write_attribute(_Config) ->
                             ?PORT,
                             {ok, changed},
                             #coap_content{},
-                            Request2),
+                            Request2,
+                            false),
     timer:sleep(100),
 
     PubTopic = list_to_binary("lwm2m/"++Epn++"/response"),
@@ -414,13 +417,102 @@ case50_write_attribute(_Config) ->
     test_mqtt_broker:stop().
 
 
-receive_notification() ->
-    receive
-        {coap_notify, Pid, N2, Code2, Content2} ->
-            {coap_notify, Pid, N2, Code2, Content2}
-    after 2000 ->
-        receive_notification_timeout
-    end.
+
+
+
+
+case60_observe(_Config) ->
+    application:set_env(?APP, xml_dir, "../../test/xml"),
+    test_mqtt_broker:start_link(),
+    {ok, _Started} = application:ensure_all_started(emq_lwm2m),
+    timer:sleep(100),
+
+    % step 1, device register ...
+    Epn = "urn:oma:lwm2m:oma:3",
+    MsgId1 = 15,
+    {ok, UdpSock} = test_open_udp_socket(),
+    test_send_coap_request( UdpSock,
+        post,
+        "coap://127.0.0.1/rd?ep="++Epn++"&lt=345&lwm2m=1",
+        #coap_content{format = <<"text/plain">>, payload = <<"</1>, </2>, </3/0>, </4>, </5>">>},
+        [],
+        MsgId1),
+    #coap_message{method = Method1, payload=Payload1} = test_recv_coap_response(UdpSock),
+    ?assertEqual({ok,created}, Method1),
+    ?assertEqual(<<"/rd/0">>, Payload1),
+    timer:sleep(50),
+    SubTopic = list_to_binary("lwm2m/"++Epn++"/command"),
+    ?assertEqual([SubTopic], test_mqtt_broker:get_subscrbied_topics()),
+
+
+    % step2,  send a OBSERVE command to device
+    CommandTopic = <<"lwm2m/", (list_to_binary(Epn))/binary, "/command">>,
+    CmdId = 307,
+    Command = #{?MQ_COMMAND_ID         => CmdId,
+                ?MQ_COMMAND            => <<"Observe">>,
+                ?MQ_OBJECT_ID          => 3,  % Device,
+                ?MQ_OBJECT_INSTANCE_ID => 0,
+                ?MQ_RESOURCE_ID        => 10   % Memory Free
+                },
+    CommandJson = jsx:encode(Command),
+    test_mqtt_broker:dispatch(CommandTopic, CommandJson, CommandTopic),
+    timer:sleep(50),
+    Request2 = test_recv_coap_request(UdpSock),
+    #coap_message{method = Method2, options=Options2, payload=Payload2} = Request2,
+    Path2 = get_coap_path(Options2),
+    Observe = get_coap_observe(Options2),
+    ?assertEqual(get, Method2),
+    ?assertEqual(<<"/3/0/10">>, Path2),
+    ?assertEqual(Observe, 0),
+    ?assertEqual(<<>>, Payload2),
+    timer:sleep(50),
+
+    test_send_coap_response(UdpSock,
+                            "127.0.0.1",
+                            ?PORT,
+                            {ok, content},
+                            #coap_content{format = <<"text/plain">>, payload = <<"2048">>},
+                            Request2,
+                            true),
+    timer:sleep(100),
+
+    PubTopic = list_to_binary("lwm2m/"++Epn++"/response"),
+    ReadResult = jsx:encode(#{  ?MQ_COMMAND_ID         => CmdId,
+                                ?MQ_OBJECT_ID          => 3,  % Device
+                                ?MQ_OBJECT_INSTANCE_ID => 0,
+                                ?MQ_RESOURCE_ID        => 10,  % Memory Free
+                                ?MQ_VALUE_TYPE         => <<"text">>,
+                                ?MQ_VALUE              => <<"2048">>
+                            }),
+    ?assertEqual({PubTopic, ReadResult}, test_mqtt_broker:get_published_msg()),
+
+
+    timer:sleep(200),
+    ObSeq = 3,
+    test_send_coap_notif(   UdpSock,
+                            "127.0.0.1",
+                            ?PORT,
+                            #coap_content{format = <<"text/plain">>, payload = <<"4096">>},
+                            ObSeq,
+                            Request2),
+    timer:sleep(100),
+
+    PubTopic = list_to_binary("lwm2m/"++Epn++"/response"),
+    ReadResult2 = jsx:encode(#{ ?MQ_COMMAND_ID         => CmdId,
+                                ?MQ_OBJECT_ID          => 3,  % Device
+                                ?MQ_OBJECT_INSTANCE_ID => 0,
+                                ?MQ_RESOURCE_ID        => 10,  % Memory Free
+                                ?MQ_VALUE_TYPE         => <<"text">>,
+                                ?MQ_VALUE              => <<"4096">>
+                            }),
+    ?assertEqual({PubTopic, ReadResult2}, test_mqtt_broker:get_published_msg()),
+
+    test_close_udp_socket(UdpSock),
+    ok = application:stop(emq_lwm2m),
+    ok = application:stop(gen_coap),
+    test_mqtt_broker:stop().
+
+
 
 
 %% TODO: add a case that xml is corrupted
@@ -469,16 +561,32 @@ test_recv_coap_request(UdpSock) ->
     Request.
 
 
-test_send_coap_response(UdpSock, Host, Port, Code, Content, Request) ->
+test_send_coap_response(UdpSock, Host, Port, Code, Content, Request, Ack) ->
     is_record(Content, coap_content) orelse error("Content must be a #coap_content!"),
     is_list(Host) orelse error("Host is not a string"),
 
     {ok, IpAddr} = inet:getaddr(Host, inet),
     Response = coap_message:response(Code, Content, Request),
-    ?LOGT("test_send_coap_response Response=~p", [Response]),
-    ResponseBinary = coap_message_parser:encode(Response),
+    Response2 = case Ack of
+                    true -> Response#coap_message{type = ack};
+                    false -> Response
+                end,
+    ?LOGT("test_send_coap_response Response=~p", [Response2]),
+    ResponseBinary = coap_message_parser:encode(Response2),
     ?LOGT("test udp socket send to ~p:~p, data=~p", [IpAddr, Port, ResponseBinary]),
     ok = gen_udp:send(UdpSock, IpAddr, Port, ResponseBinary).
+
+test_send_coap_notif(UdpSock, Host, Port, Content, ObSeq, Request) ->
+    is_record(Content, coap_content) orelse error("Content must be a #coap_content!"),
+    is_list(Host) orelse error("Host is not a string"),
+
+    {ok, IpAddr} = inet:getaddr(Host, inet),
+    Notif = coap_message:response({ok, content}, Content, Request),
+    NewNotif = coap_message:set(observe, ObSeq, Notif),
+    ?LOGT("test_send_coap_notif Response=~p", [NewNotif]),
+    NotifBinary = coap_message_parser:encode(NewNotif),
+    ?LOGT("test udp socket send to ~p:~p, data=~p", [IpAddr, Port, NotifBinary]),
+    ok = gen_udp:send(UdpSock, IpAddr, Port, NotifBinary).
 
 
 resolve_uri(Uri) ->
@@ -513,6 +621,8 @@ get_coap_path(Options) ->
 get_coap_query(Options) ->
     get_query(Options, []).
 
+get_coap_observe(Options) ->
+    get_observe(Options).
 
 
 get_path([], Acc) ->
@@ -530,6 +640,13 @@ get_query([{uri_query, [Q1]}|T], Acc) ->
     get_query(T, [Q1|Acc]);
 get_query([{_, _}|T], Acc) ->
     get_query(T, Acc).
+
+get_observe([]) ->
+    undefined;
+get_observe([{observe, V}|_T]) ->
+    V;
+get_observe([{_, _}|T]) ->
+    get_observe(T).
 
 join_path([], Acc) ->
     Acc;

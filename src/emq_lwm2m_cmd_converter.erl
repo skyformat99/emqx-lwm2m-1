@@ -55,7 +55,11 @@ mqtt_payload_to_coap_request(InputCmd = #{?MQ_COMMAND := <<"Write-Attributes">>}
     {ObjectId, ObjectInstanceId, ResourceId} = get_oid_rid(InputCmd),
     Path = build_path({ObjectId, ObjectInstanceId, ResourceId}),
     Query = maps:get(?MQ_VALUE, InputCmd),
-    {coap_message:request(con, put, <<>>, [{uri_path, Path}, {uri_query, [Query]}]), InputCmd}.
+    {coap_message:request(con, put, <<>>, [{uri_path, Path}, {uri_query, [Query]}]), InputCmd};
+mqtt_payload_to_coap_request(InputCmd = #{?MQ_COMMAND := <<"Observe">>}) ->
+    {ObjectId, ObjectInstanceId, ResourceId} = get_oid_rid(InputCmd),
+    Path = build_path({ObjectId, ObjectInstanceId, ResourceId}),
+    {coap_message:request(con, get, <<>>, [{uri_path, Path}, {observe, 0}]), InputCmd}.
 
 
 coap_response_to_mqtt_payload(Method, CoapPayload, Format, Ref=#{?MQ_COMMAND := <<"Read">>}) ->
@@ -63,16 +67,19 @@ coap_response_to_mqtt_payload(Method, CoapPayload, Format, Ref=#{?MQ_COMMAND := 
     coap_read_response_to_mqtt_payload(Method, CoapPayload, Format, Ref);
 coap_response_to_mqtt_payload(Method, CoapPayload, Format, Ref=#{?MQ_COMMAND := <<"Write">>}) ->
     ?LOG(debug, "coap_response_to_mqtt_payload write Method=~p, CoapPayload=~p, Format=~p, Ref=~p", [Method, CoapPayload, Format, Ref]),
-    coap_write_response_to_mqtt_payload(Ref, Method);
+    coap_write_response_to_mqtt_payload(Method, Ref);
 coap_response_to_mqtt_payload(Method, CoapPayload, Format, Ref=#{?MQ_COMMAND := <<"Execute">>}) ->
     ?LOG(debug, "coap_response_to_mqtt_payload execute Method=~p, CoapPayload=~p, Format=~p, Ref=~p", [Method, CoapPayload, Format, Ref]),
-    coap_execute_response_to_mqtt_payload(Ref, Method);
+    coap_execute_response_to_mqtt_payload(Method, Ref);
 coap_response_to_mqtt_payload(Method, CoapPayload, Format, Ref=#{?MQ_COMMAND := <<"Discover">>}) ->
     ?LOG(debug, "coap_response_to_mqtt_payload discover Method=~p, CoapPayload=~p, Format=~p, Ref=~p", [Method, CoapPayload, Format, Ref]),
-    coap_discover_response_to_mqtt_payload(Ref, CoapPayload, Method);
+    coap_discover_response_to_mqtt_payload(CoapPayload, Method, Ref);
 coap_response_to_mqtt_payload(Method, CoapPayload, Format, Ref=#{?MQ_COMMAND := <<"Write-Attributes">>}) ->
     ?LOG(debug, "coap_response_to_mqtt_payload write-attribute Method=~p, CoapPayload=~p, Format=~p, Ref=~p", [Method, CoapPayload, Format, Ref]),
-    coap_writeattr_response_to_mqtt_payload(Ref, CoapPayload, Method).
+    coap_writeattr_response_to_mqtt_payload(CoapPayload, Method, Ref);
+coap_response_to_mqtt_payload(Method, CoapPayload, Format, Ref=#{?MQ_COMMAND := <<"Observe">>}) ->
+    ?LOG(debug, "coap_response_to_mqtt_payload observe Method=~p, CoapPayload=~p, Format=~p, Ref=~p", [Method, CoapPayload, Format, Ref]),
+    coap_observe_response_to_mqtt_payload(Method, CoapPayload, Format, Ref).
 
 
 
@@ -122,26 +129,31 @@ coap_read_object_response_to_mqtt_payload(CoapPayload, <<"application/vnd.oma.lw
 
 
 
-coap_write_response_to_mqtt_payload(Ref, {ok, changed}) ->
+coap_write_response_to_mqtt_payload({ok, changed}, Ref) ->
     make_write_resource_response(Ref, <<"Changed">>);
-coap_write_response_to_mqtt_payload(Ref, {error, Error}) ->
+coap_write_response_to_mqtt_payload({error, Error}, Ref) ->
     make_write_resource_response(Ref, error_code(Error)).
 
-coap_execute_response_to_mqtt_payload(Ref, {ok, changed}) ->
+coap_execute_response_to_mqtt_payload({ok, changed}, Ref) ->
     make_write_resource_response(Ref, <<"Changed">>);
-coap_execute_response_to_mqtt_payload(Ref, {error, Error}) ->
+coap_execute_response_to_mqtt_payload({error, Error}, Ref) ->
     make_write_resource_error(Ref, error_code(Error)).
 
-coap_discover_response_to_mqtt_payload(Ref, CoapPayload, {ok, content}) ->
+coap_discover_response_to_mqtt_payload(CoapPayload, {ok, content}, Ref) ->
     make_read_resource_response(Ref, <<"text">>, CoapPayload);
-coap_discover_response_to_mqtt_payload(Ref, _CoapPayload, {error, Error}) ->
+coap_discover_response_to_mqtt_payload(_CoapPayload, {error, Error}, Ref) ->
     make_read_resource_error(Ref, error_code(Error)).
 
-coap_writeattr_response_to_mqtt_payload(Ref, _CoapPayload, {ok, changed}) ->
+coap_writeattr_response_to_mqtt_payload(_CoapPayload, {ok, changed}, Ref) ->
     make_write_resource_response(Ref, <<"Changed">>);
-coap_writeattr_response_to_mqtt_payload(Ref, _CoapPayload, {error, Error}) ->
+coap_writeattr_response_to_mqtt_payload(_CoapPayload, {error, Error}, Ref) ->
     make_write_resource_response(Ref, error_code(Error)).
 
+
+coap_observe_response_to_mqtt_payload({error, Error}, _CoapPayload, _Format, Ref) ->
+    make_read_resource_error(Ref, error_code(Error));
+coap_observe_response_to_mqtt_payload({ok, content}, CoapPayload, Format, Ref) ->
+    coap_read_response_to_mqtt_payload2(CoapPayload, Format, Ref).
 
 
 build_path({ObjectId, undefined, undefined}) ->
@@ -183,12 +195,12 @@ make_read_resource_response(Ref=#{}, Type, Value) ->
 
 make_read_resource_error(Ref=#{}, Error) ->
     jsx:encode(#{
-        ?MQ_COMMAND_ID          => maps:get(?MQ_COMMAND_ID, Ref),
-        ?MQ_OBJECT_ID           => maps:get(?MQ_OBJECT_ID, Ref),
-        ?MQ_OBJECT_INSTANCE_ID  => maps:get(?MQ_OBJECT_INSTANCE_ID, Ref),
-        ?MQ_RESOURCE_ID         => maps:get(?MQ_RESOURCE_ID, Ref),
-        ?MQ_VALUE               => Error
-    }).
+                    ?MQ_COMMAND_ID          => maps:get(?MQ_COMMAND_ID, Ref),
+                    ?MQ_OBJECT_ID           => maps:get(?MQ_OBJECT_ID, Ref),
+                    ?MQ_OBJECT_INSTANCE_ID  => maps:get(?MQ_OBJECT_INSTANCE_ID, Ref),
+                    ?MQ_RESOURCE_ID         => maps:get(?MQ_RESOURCE_ID, Ref),
+                    ?MQ_VALUE               => Error
+                }).
 
 
 
@@ -206,12 +218,12 @@ make_write_resource_response(Ref=#{}, Result) ->
 make_write_resource_error(Ref=#{}, Error) ->
     ?LOG(debug, "make_write_resource_error Ref=~p, Error=~p", [Ref, Error]),
     jsx:encode(#{
-        ?MQ_COMMAND_ID          => maps:get(?MQ_COMMAND_ID, Ref),
-        ?MQ_OBJECT_ID           => maps:get(?MQ_OBJECT_ID, Ref),
-        ?MQ_OBJECT_INSTANCE_ID  => maps:get(?MQ_OBJECT_INSTANCE_ID, Ref),
-        ?MQ_RESOURCE_ID         => maps:get(?MQ_RESOURCE_ID, Ref),
-        ?MQ_ERROR               => Error
-    }).
+                    ?MQ_COMMAND_ID          => maps:get(?MQ_COMMAND_ID, Ref),
+                    ?MQ_OBJECT_ID           => maps:get(?MQ_OBJECT_ID, Ref),
+                    ?MQ_OBJECT_INSTANCE_ID  => maps:get(?MQ_OBJECT_INSTANCE_ID, Ref),
+                    ?MQ_RESOURCE_ID         => maps:get(?MQ_RESOURCE_ID, Ref),
+                    ?MQ_ERROR               => Error
+                }).
 
 
 
