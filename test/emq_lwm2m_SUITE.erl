@@ -467,13 +467,12 @@ case60_observe(_Config) ->
     ?assertEqual(<<>>, Payload2),
     timer:sleep(50),
 
-    test_send_coap_response(UdpSock,
-                            "127.0.0.1",
-                            ?PORT,
-                            {ok, content},
-                            #coap_content{format = <<"text/plain">>, payload = <<"2048">>},
-                            Request2,
-                            true),
+    test_send_coap_observe_ack( UdpSock,
+                                "127.0.0.1",
+                                ?PORT,
+                                {ok, content},
+                                #coap_content{format = <<"text/plain">>, payload = <<"2048">>},
+                                Request2),
     timer:sleep(100),
 
     PubTopic = list_to_binary("lwm2m/"++Epn++"/response"),
@@ -575,6 +574,23 @@ test_send_coap_response(UdpSock, Host, Port, Code, Content, Request, Ack) ->
     ResponseBinary = coap_message_parser:encode(Response2),
     ?LOGT("test udp socket send to ~p:~p, data=~p", [IpAddr, Port, ResponseBinary]),
     ok = gen_udp:send(UdpSock, IpAddr, Port, ResponseBinary).
+
+
+
+test_send_coap_observe_ack(UdpSock, Host, Port, Code, Content, Request) ->
+    is_record(Content, coap_content) orelse error("Content must be a #coap_content!"),
+    is_list(Host) orelse error("Host is not a string"),
+
+    {ok, IpAddr} = inet:getaddr(Host, inet),
+    Response = coap_message:response(Code, Content, Request),
+    Response1 = coap_message:set(observe, 5, Response),
+    Response2 = Response1#coap_message{type = ack},
+
+    ?LOGT("test_send_coap_response Response=~p", [Response2]),
+    ResponseBinary = coap_message_parser:encode(Response2),
+    ?LOGT("test udp socket send to ~p:~p, data=~p", [IpAddr, Port, ResponseBinary]),
+    ok = gen_udp:send(UdpSock, IpAddr, Port, ResponseBinary).
+
 
 test_send_coap_notif(UdpSock, Host, Port, Content, ObSeq, Request) ->
     is_record(Content, coap_content) orelse error("Content must be a #coap_content!"),
