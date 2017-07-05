@@ -50,7 +50,12 @@ mqtt_payload_to_coap_request(InputCmd = #{?MQ_COMMAND := <<"Execute">>}) ->
 mqtt_payload_to_coap_request(InputCmd = #{?MQ_COMMAND := <<"Discover">>}) ->
     {ObjectId, ObjectInstanceId, ResourceId} = get_oid_rid(InputCmd),
     Path = build_path({ObjectId, ObjectInstanceId, ResourceId}),
-    {coap_message:request(con, get, <<>>, [{uri_path, Path}, {'accept', ?LWM2M_FORMAT_LINK}]), InputCmd}.
+    {coap_message:request(con, get, <<>>, [{uri_path, Path}, {'accept', ?LWM2M_FORMAT_LINK}]), InputCmd};
+mqtt_payload_to_coap_request(InputCmd = #{?MQ_COMMAND := <<"Write-Attributes">>}) ->
+    {ObjectId, ObjectInstanceId, ResourceId} = get_oid_rid(InputCmd),
+    Path = build_path({ObjectId, ObjectInstanceId, ResourceId}),
+    Query = maps:get(?MQ_VALUE, InputCmd),
+    {coap_message:request(con, put, <<>>, [{uri_path, Path}, {uri_query, [Query]}]), InputCmd}.
 
 
 coap_response_to_mqtt_payload(Method, CoapPayload, Format, Ref=#{?MQ_COMMAND := <<"Read">>}) ->
@@ -64,7 +69,12 @@ coap_response_to_mqtt_payload(Method, CoapPayload, Format, Ref=#{?MQ_COMMAND := 
     coap_execute_response_to_mqtt_payload(Ref, Method);
 coap_response_to_mqtt_payload(Method, CoapPayload, Format, Ref=#{?MQ_COMMAND := <<"Discover">>}) ->
     ?LOG(debug, "coap_response_to_mqtt_payload discover Method=~p, CoapPayload=~p, Format=~p, Ref=~p", [Method, CoapPayload, Format, Ref]),
-    coap_discover_response_to_mqtt_payload(Ref, CoapPayload, Method).
+    coap_discover_response_to_mqtt_payload(Ref, CoapPayload, Method);
+coap_response_to_mqtt_payload(Method, CoapPayload, Format, Ref=#{?MQ_COMMAND := <<"Write-Attributes">>}) ->
+    ?LOG(debug, "coap_response_to_mqtt_payload write-attribute Method=~p, CoapPayload=~p, Format=~p, Ref=~p", [Method, CoapPayload, Format, Ref]),
+    coap_writeattr_response_to_mqtt_payload(Ref, CoapPayload, Method).
+
+
 
 
 
@@ -117,8 +127,6 @@ coap_write_response_to_mqtt_payload(Ref, {ok, changed}) ->
 coap_write_response_to_mqtt_payload(Ref, {error, Error}) ->
     make_write_resource_response(Ref, error_code(Error)).
 
-
-
 coap_execute_response_to_mqtt_payload(Ref, {ok, changed}) ->
     make_write_resource_response(Ref, <<"Changed">>);
 coap_execute_response_to_mqtt_payload(Ref, {error, Error}) ->
@@ -128,6 +136,11 @@ coap_discover_response_to_mqtt_payload(Ref, CoapPayload, {ok, content}) ->
     make_read_resource_response(Ref, <<"text">>, CoapPayload);
 coap_discover_response_to_mqtt_payload(Ref, _CoapPayload, {error, Error}) ->
     make_read_resource_error(Ref, error_code(Error)).
+
+coap_writeattr_response_to_mqtt_payload(Ref, _CoapPayload, {ok, changed}) ->
+    make_write_resource_response(Ref, <<"Changed">>);
+coap_writeattr_response_to_mqtt_payload(Ref, _CoapPayload, {error, Error}) ->
+    make_write_resource_response(Ref, error_code(Error)).
 
 
 
