@@ -27,7 +27,7 @@
 -include_lib("eunit/include/eunit.hrl").
 
 
-all() -> [case01_register,
+all() -> [case01_register, case02_update_deregister,
     case10_read,
     case20_write,
     case30_execute,
@@ -50,6 +50,9 @@ case01_register(_Config) ->
     {ok, _Started} = application:ensure_all_started(emq_lwm2m),
     timer:sleep(100),
 
+    % ----------------------------------------
+    % REGISTER command
+    % ----------------------------------------
     Epn = "urn:oma:lwm2m:oma:3",
     MsgId = 12,
     {ok, UdpSock} = test_open_udp_socket(),
@@ -60,7 +63,7 @@ case01_register(_Config) ->
                             [],
                             MsgId),
     #coap_message{type = ack, method = Method} = test_recv_coap_response(UdpSock),
-    ?assertMatch({ok,created}, Method),
+    ?assertEqual({ok,created}, Method),
     timer:sleep(50),
     SubTopic = list_to_binary("lwm2m/"++Epn++"/command"),
     ?assertEqual([SubTopic], test_mqtt_broker:get_subscrbied_topics()),
@@ -71,10 +74,72 @@ case01_register(_Config) ->
     test_mqtt_broker:stop().
 
 
-% TODO: case02_update(_Config)
+case02_update_deregister(_Config) ->
+    test_mqtt_broker:start_link(),
+    {ok, _Started} = application:ensure_all_started(emq_lwm2m),
+    timer:sleep(100),
+
+    % ----------------------------------------
+    % REGISTER command
+    % ----------------------------------------
+    Epn = "urn:oma:lwm2m:oma:3",
+    MsgId = 12,
+    {ok, UdpSock} = test_open_udp_socket(),
+    test_send_coap_request( UdpSock,
+                            post,
+                            "coap://127.0.0.1/rd?ep="++Epn++"&lt=345&lwm2m=1",
+                            #coap_content{format = <<"text/plain">>, payload = <<"</1>, </2>, </3>, </4>, </5>">>},
+                            [],
+                            MsgId),
+    timer:sleep(100),
+    #coap_message{type = ack, method = Method, payload = Location} = test_recv_coap_response(UdpSock),
+    ?assertEqual({ok,created}, Method),
+    ?assertMatch(<<"/rd/", _Rest/binary>>, Location),
+    LocationString = binary_to_list(Location),
+    timer:sleep(50),
+    SubTopic = list_to_binary("lwm2m/"++Epn++"/command"),
+    ?assertEqual([SubTopic], test_mqtt_broker:get_subscrbied_topics()),
+
+    % ----------------------------------------
+    % UPDATE command
+    % ----------------------------------------
+    ?LOGT("start to send UPDATE command", []),
+    MsgId2 = 27,
+    test_send_coap_request( UdpSock,
+                            post,
+                            "coap://127.0.0.1"++LocationString++"?lt=789",
+                            #coap_content{payload = <<>>},
+                            [],
+                            MsgId2),
+    #coap_message{type = ack, method = Method2} = test_recv_coap_response(UdpSock),
+    ?assertEqual({ok,changed}, Method2),
+
+    timer:sleep(50),
+
+    % ----------------------------------------
+    % DE-REGISTER command
+    % ----------------------------------------
+    ?LOGT("start to send DE-REGISTER command", []),
+    MsgId3 = 52,
+    test_send_coap_request( UdpSock,
+                            delete,
+                            "coap://127.0.0.1"++LocationString,
+                            #coap_content{payload = <<>>},
+                            [],
+                            MsgId3),
+    timer:sleep(100),
+    #coap_message{type = ack, method = Method3} = test_recv_coap_response(UdpSock),
+    ?assertMatch({ok,deleted}, Method3),
+
+    timer:sleep(100),
+    ?assertEqual([], test_mqtt_broker:get_subscrbied_topics()),
+
+    test_close_udp_socket(UdpSock),
+    ok = application:stop(emq_lwm2m),
+    ok = application:stop(gen_coap),
+    test_mqtt_broker:stop().
 
 
-% TODO: case03_deregister(_Config)
 
 
 case10_read(_Config) ->
@@ -95,7 +160,7 @@ case10_read(_Config) ->
                             MsgId1),
     #coap_message{method = Method1, payload=Payload1} = test_recv_coap_response(UdpSock),
     ?assertEqual({ok,created}, Method1),
-    ?assertEqual(<<"/rd/0">>, Payload1),
+    ?assertMatch(<<"/rd/", _Rest/binary>>, Payload1),
     timer:sleep(50),
     SubTopic = list_to_binary("lwm2m/"++Epn++"/command"),
     ?assertEqual([SubTopic], test_mqtt_broker:get_subscrbied_topics()),
@@ -161,7 +226,7 @@ case20_write(_Config) ->
                             MsgId1),
     #coap_message{method = Method1, payload=Payload1} = test_recv_coap_response(UdpSock),
     ?assertEqual({ok,created}, Method1),
-    ?assertEqual(<<"/rd/0">>, Payload1),
+    ?assertMatch(<<"/rd/", _Rest/binary>>, Payload1),
     timer:sleep(50),
     SubTopic = list_to_binary("lwm2m/"++Epn++"/command"),
     ?assertEqual([SubTopic], test_mqtt_broker:get_subscrbied_topics()),
@@ -221,14 +286,14 @@ case30_execute(_Config) ->
     MsgId1 = 15,
     {ok, UdpSock} = test_open_udp_socket(),
     test_send_coap_request( UdpSock,
-        post,
-        "coap://127.0.0.1/rd?ep="++Epn++"&lt=345&lwm2m=1",
-        #coap_content{format = <<"text/plain">>, payload = <<"</1>, </2>, </3/0>, </4>, </5>">>},
-        [],
-        MsgId1),
+                            post,
+                            "coap://127.0.0.1/rd?ep="++Epn++"&lt=345&lwm2m=1",
+                            #coap_content{format = <<"text/plain">>, payload = <<"</1>, </2>, </3/0>, </4>, </5>">>},
+                            [],
+                            MsgId1),
     #coap_message{method = Method1, payload=Payload1} = test_recv_coap_response(UdpSock),
     ?assertEqual({ok,created}, Method1),
-    ?assertEqual(<<"/rd/0">>, Payload1),
+    ?assertMatch(<<"/rd/", _Rest/binary>>, Payload1),
     timer:sleep(50),
     SubTopic = list_to_binary("lwm2m/"++Epn++"/command"),
     ?assertEqual([SubTopic], test_mqtt_broker:get_subscrbied_topics()),
@@ -285,14 +350,14 @@ case40_discover(_Config) ->
     MsgId1 = 15,
     {ok, UdpSock} = test_open_udp_socket(),
     test_send_coap_request( UdpSock,
-        post,
-        "coap://127.0.0.1/rd?ep="++Epn++"&lt=345&lwm2m=1",
-        #coap_content{format = <<"text/plain">>, payload = <<"</1>, </2>, </3/0>, </4>, </5>">>},
-        [],
-        MsgId1),
+                            post,
+                            "coap://127.0.0.1/rd?ep="++Epn++"&lt=345&lwm2m=1",
+                            #coap_content{format = <<"text/plain">>, payload = <<"</1>, </2>, </3/0>, </4>, </5>">>},
+                            [],
+                            MsgId1),
     #coap_message{method = Method1, payload=Payload1} = test_recv_coap_response(UdpSock),
     ?assertEqual({ok,created}, Method1),
-    ?assertEqual(<<"/rd/0">>, Payload1),
+    ?assertMatch(<<"/rd/", _Rest/binary>>, Payload1),
     timer:sleep(50),
     SubTopic = list_to_binary("lwm2m/"++Epn++"/command"),
     ?assertEqual([SubTopic], test_mqtt_broker:get_subscrbied_topics()),
@@ -357,14 +422,14 @@ case50_write_attribute(_Config) ->
     MsgId1 = 15,
     {ok, UdpSock} = test_open_udp_socket(),
     test_send_coap_request( UdpSock,
-        post,
-        "coap://127.0.0.1/rd?ep="++Epn++"&lt=345&lwm2m=1",
-        #coap_content{format = <<"text/plain">>, payload = <<"</1>, </2>, </3/0>, </4>, </5>">>},
-        [],
-        MsgId1),
+                            post,
+                            "coap://127.0.0.1/rd?ep="++Epn++"&lt=345&lwm2m=1",
+                            #coap_content{format = <<"text/plain">>, payload = <<"</1>, </2>, </3/0>, </4>, </5>">>},
+                            [],
+                            MsgId1),
     #coap_message{method = Method1, payload=Payload1} = test_recv_coap_response(UdpSock),
     ?assertEqual({ok,created}, Method1),
-    ?assertEqual(<<"/rd/0">>, Payload1),
+    ?assertMatch(<<"/rd/", _Rest/binary>>, Payload1),
     timer:sleep(50),
     SubTopic = list_to_binary("lwm2m/"++Epn++"/command"),
     ?assertEqual([SubTopic], test_mqtt_broker:get_subscrbied_topics()),
@@ -432,14 +497,14 @@ case60_observe(_Config) ->
     MsgId1 = 15,
     {ok, UdpSock} = test_open_udp_socket(),
     test_send_coap_request( UdpSock,
-        post,
-        "coap://127.0.0.1/rd?ep="++Epn++"&lt=345&lwm2m=1",
-        #coap_content{format = <<"text/plain">>, payload = <<"</1>, </2>, </3/0>, </4>, </5>">>},
-        [],
-        MsgId1),
+                            post,
+                            "coap://127.0.0.1/rd?ep="++Epn++"&lt=345&lwm2m=1",
+                            #coap_content{format = <<"text/plain">>, payload = <<"</1>, </2>, </3/0>, </4>, </5>">>},
+                            [],
+                            MsgId1),
     #coap_message{method = Method1, payload=Payload1} = test_recv_coap_response(UdpSock),
     ?assertEqual({ok,created}, Method1),
-    ?assertEqual(<<"/rd/0">>, Payload1),
+    ?assertMatch(<<"/rd/", _Rest/binary>>, Payload1),
     timer:sleep(50),
     SubTopic = list_to_binary("lwm2m/"++Epn++"/command"),
     ?assertEqual([SubTopic], test_mqtt_broker:get_subscrbied_topics()),

@@ -33,7 +33,7 @@
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
     terminate/2, code_change/3]).
 
--record(state, {proto, peer, keepalive, coap_pid, rsp_topic}).
+-record(state, {proto, peer, keepalive, coap_pid, rsp_topic, sub_topic}).
 
 -define(DEFAULT_KEEP_ALIVE_DURATION,  60*2).
 
@@ -86,7 +86,7 @@ init({CoapPid, ClientId, ChId}) ->
             Topic = <<"lwm2m/", ClientId/binary, "/command">>,
             NewProto = ?PROTO_SUBSCRIBE(Topic, Proto),
             RspTopic = <<"lwm2m/", ClientId/binary, "/response">>,
-            {ok, #state{coap_pid = CoapPid, proto = NewProto, peer = ChId, rsp_topic = RspTopic}};
+            {ok, #state{coap_pid = CoapPid, proto = NewProto, peer = ChId, rsp_topic = RspTopic, sub_topic = Topic}};
         Other                 ->
             {stop, Other}
     end.
@@ -183,15 +183,19 @@ handle_info(Info, State) ->
     ?LOG(error, "unexpected info ~p", [Info]),
     {noreply, State, hibernate}.
 
-terminate(Reason, #state{proto = Proto, keepalive = KeepAlive}) ->
+terminate(Reason, #state{proto = Proto, keepalive = KeepAlive, sub_topic = SubTopic}) ->
     emq_lwm2m_timer:cancel_timer(KeepAlive),
+    CleanFun =  fun(Error) ->
+                    NewProto = ?PROTO_UNSUBSCRIBE(SubTopic, Proto),
+                    ?PROTO_SHUTDOWN(Error, NewProto)
+                end,
     case {Proto, Reason} of
         {undefined, _} ->
             ok;
         {_, {shutdown, Error}} ->
-            ?PROTO_SHUTDOWN(Error, Proto);
+            CleanFun(Error);
         {_, Reason} ->
-            ?PROTO_SHUTDOWN(Reason, Proto)
+            CleanFun(Reason)
     end.
 
 

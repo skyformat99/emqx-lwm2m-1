@@ -29,5 +29,6 @@ start_link() ->
     supervisor:start_link({local, ?MODULE}, ?MODULE, []).
 
 init(_Args) ->
-    {ok, { {one_for_all, 10, 3600}, [?CHILD(emq_lwm2m_registry), ?CHILD(emq_lwm2m_endpointname)] }}.
+    random:seed(erlang:phash2([node()]), erlang:monotonic_time(), erlang:unique_integer()),
+    {ok, { {one_for_all, 10, 3600}, [?CHILD(emq_lwm2m_registry)] }}.
 

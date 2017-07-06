@@ -37,36 +37,45 @@
 
 -record(lwm2m_query, {epn, life_time, sms, lwm2m_ver}).
 
+-record(lwm2m_context, {epn, location, life_time}).
+
 
 % resource operations
 coap_discover(_Prefix, _Args) ->
     [{absolute, "mqtt", []}].
 
 coap_get(ChId, [?LWM2M_REGISTER_PREFIX], Name, Query) ->
-    ?LOG(debug, "~p GET Name=~p, Query=~p~n", [ChId, Name, Query]),
+    ?LOG(debug, "~p ~p GET Name=~p, Query=~p~n", [self(),ChId, Name, Query]),
     #coap_content{};
 coap_get(ChId, Prefix, Name, Query) ->
     ?LOG(error, "ignore bad put request ChId=~p, Prefix=~p, Name=~p, Query=~p", [ChId, Prefix, Name, Query]),
     {error, bad_request}.
 
 % LWM2M REGISTER COMMAND
-coap_post(ChId, [?LWM2M_REGISTER_PREFIX], Name, Query, Content) ->
+coap_post(ChId, [?LWM2M_REGISTER_PREFIX], [], Query, Content) ->
     #lwm2m_query{epn = Epn, lwm2m_ver = Ver, life_time = LifeTime} = parse_query(Query),
-    ?LOG(debug, "~p REGISTER command Name=~p, Query=~p, Content=~p", [ChId, Name, Query, Content]),
+    Location = list_to_binary(io_lib:format("~.16B", [random:uniform(65535)])),
+    ?LOG(debug, "~p ~p REGISTER command Query=~p, Content=~p, Location=~p", [self(), ChId, Query, Content, Location]),
+    put(lwm2m_context, #lwm2m_context{epn = Epn, location = Location, life_time = LifeTime}),
     % TODO: parse content
     % TODO: check lwm2m version
-    Location = emq_lwm2m_endpointname:register_name(Epn),
     emq_lwm2m_mqtt_adapter:start_link(self(), Epn, ChId),
-    {ok, created, #coap_content{payload = list_to_binary(io_lib:format("/rd/~.16B", [Location]))}};
+    {ok, created, #coap_content{payload = list_to_binary(io_lib:format("/rd/~s", [Location]))}};
 
 % LWM2M UPDATE COMMAND
-coap_post(ChId, [?LWM2M_REGISTER_PREFIX, Location], Name, Query, Content) ->
-    LocationInt = binary_to_integer(Location, 16),
-    #lwm2m_query{epn = Epn, lwm2m_ver = Ver, life_time = LifeTime} = parse_query(Query),
-    ?LOG(debug, "~p UPDATE command location=~p, LifeTime=~p, Query=~p, Content=~p", [ChId, Location, LifeTime, Query, Content]),
+coap_post(ChId, [?LWM2M_REGISTER_PREFIX], [Location], Query, Content) ->
+    #lwm2m_query{life_time = LifeTime} = parse_query(Query),
+    #lwm2m_context{location = TrueLocation} = get(lwm2m_context),
+    ?LOG(debug, "~p ~p UPDATE command location=~p, LifeTime=~p, Query=~p, Content=~p", [self(), ChId, Location, LifeTime, Query, Content]),
     % TODO: update lifetime
     % TODO: parse content
-    {ok, changed, #coap_content{}};
+    case Location of
+        TrueLocation ->
+            {ok, changed, #coap_content{}};
+        _Other       ->
+            ?LOG(error, "Location mismatch ~p vs ~p", [Location, TrueLocation]),
+            {error, bad_request}
+    end;
 coap_post(ChId, Prefix, Name, Query, Content) ->
     ?LOG(error, "bad post request ChId=~p, Prefix=~p, Name=~p, Query=~p, Content=~p", [ChId, Prefix, Name, Query, Content]),
     {error, bad_request}.
@@ -76,11 +85,17 @@ coap_put(_ChId, Prefix, Name, Query, Content) ->
     {error, bad_request}.
 
 % LWM2M DE-REGISTER COMMAND
-coap_delete(ChId, [?LWM2M_REGISTER_PREFIX, Location], _Name) ->
-    LocationInt = binary_to_integer(Location, 16),
-    ?LOG(debug, "~p DELETE command location=~p", [ChId, Location]),
-    emq_lwm2m_mqtt_adapter:stop(ChId),
-    emq_lwm2m_endpointname:unregister_location(LocationInt),
+coap_delete(ChId, [?LWM2M_REGISTER_PREFIX], [Location]) ->
+    #lwm2m_context{location = TrueLocation} = get(lwm2m_context),
+    ?LOG(debug, "~p ~p DELETE command location=~p", [self(), ChId, Location]),
+    case Location of
+        TrueLocation ->
+            emq_lwm2m_mqtt_adapter:stop(ChId),
+            self() !{coap_error, ChId, undefined, [], shutdown};
+        _Other ->
+            ?LOG(error, "ignore DE-REGISTER command due to mismatch location ~p vs ~p", [Location, TrueLocation]),
+            ignore
+    end,
     ok;
 coap_delete(_ChId, _Prefix, _Name) ->
     {error, bad_request}.
@@ -132,6 +147,9 @@ data_format([{content_format, Format}|_]) ->
     Format;
 data_format([{_, _}|T]) ->
     data_format(T).
+
+
+
 
 % end of file
 
