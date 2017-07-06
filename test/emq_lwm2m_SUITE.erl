@@ -70,7 +70,7 @@ case01_register(_Config) ->
 
     test_close_udp_socket(UdpSock),
     ok = application:stop(emq_lwm2m),
-    ok = application:stop(gen_coap),
+    ok = application:stop(lwm2m_coap),
     test_mqtt_broker:stop().
 
 
@@ -136,7 +136,7 @@ case02_update_deregister(_Config) ->
 
     test_close_udp_socket(UdpSock),
     ok = application:stop(emq_lwm2m),
-    ok = application:stop(gen_coap),
+    ok = application:stop(lwm2m_coap),
     test_mqtt_broker:stop().
 
 
@@ -201,7 +201,7 @@ case10_read(_Config) ->
 
     test_close_udp_socket(UdpSock),
     ok = application:stop(emq_lwm2m),
-    ok = application:stop(gen_coap),
+    ok = application:stop(lwm2m_coap),
     test_mqtt_broker:stop().
 
 
@@ -267,7 +267,7 @@ case20_write(_Config) ->
 
     test_close_udp_socket(UdpSock),
     ok = application:stop(emq_lwm2m),
-    ok = application:stop(gen_coap),
+    ok = application:stop(lwm2m_coap),
     test_mqtt_broker:stop().
 
 
@@ -333,7 +333,7 @@ case30_execute(_Config) ->
 
     test_close_udp_socket(UdpSock),
     ok = application:stop(emq_lwm2m),
-    ok = application:stop(gen_coap),
+    ok = application:stop(lwm2m_coap),
     test_mqtt_broker:stop().
 
 
@@ -405,7 +405,7 @@ case40_discover(_Config) ->
 
     test_close_udp_socket(UdpSock),
     ok = application:stop(emq_lwm2m),
-    ok = application:stop(gen_coap),
+    ok = application:stop(lwm2m_coap),
     test_mqtt_broker:stop().
 
 
@@ -478,7 +478,7 @@ case50_write_attribute(_Config) ->
 
     test_close_udp_socket(UdpSock),
     ok = application:stop(emq_lwm2m),
-    ok = application:stop(gen_coap),
+    ok = application:stop(lwm2m_coap),
     test_mqtt_broker:stop().
 
 
@@ -573,7 +573,7 @@ case60_observe(_Config) ->
 
     test_close_udp_socket(UdpSock),
     ok = application:stop(emq_lwm2m),
-    ok = application:stop(gen_coap),
+    ok = application:stop(lwm2m_coap),
     test_mqtt_broker:stop().
 
 
@@ -597,10 +597,10 @@ test_send_coap_request(UdpSock, Method, Uri, Content, Options, MsgId) ->
     is_list(Options) orelse error("Options must be a list"),
     case resolve_uri(Uri) of
         {coap, {IpAddr, Port}, Path, Query} ->
-            Request0 = coap_message:request(con, Method, Content, [{uri_path, Path}, {uri_query, Query} | Options]),
+            Request0 = lwm2m_coap_message:request(con, Method, Content, [{uri_path, Path}, {uri_query, Query} | Options]),
             Request = Request0#coap_message{id = MsgId},
             ?LOGT("send_coap_request Request=~p", [Request]),
-            RequestBinary = coap_message_parser:encode(Request),
+            RequestBinary = lwm2m_coap_message_parser:encode(Request),
             ?LOGT("test udp socket send to ~p:~p, data=~p", [IpAddr, Port, RequestBinary]),
             ok = gen_udp:send(UdpSock, IpAddr, Port, RequestBinary);
         {SchemeDiff, ChIdDiff, _, _} ->
@@ -610,7 +610,7 @@ test_send_coap_request(UdpSock, Method, Uri, Content, Options, MsgId) ->
 test_recv_coap_response(UdpSock) ->
     {ok, {Address, Port, Packet}} = gen_udp:recv(UdpSock, 0, 2000),
     ?LOGT("test udp receive from ~p:~p, data1=~p", [Address, Port, Packet]),
-    Response = coap_message_parser:decode(Packet),
+    Response = lwm2m_coap_message_parser:decode(Packet),
     #coap_message{type = ack, method = Method, id=Id, token = Token, payload = Payload} = Response,
     ?LOGT("receive coap response Method=~p, Id=~p, Token=~p, Payload=~p", [Method, Id, Token, Payload]),
     Response.
@@ -619,7 +619,7 @@ test_recv_coap_response(UdpSock) ->
 test_recv_coap_request(UdpSock) ->
     {ok, {Address, Port, Packet}} = gen_udp:recv(UdpSock, 0, 2000),
     ?LOGT("test udp receive from ~p:~p, data2=~p", [Address, Port, Packet]),
-    Request = coap_message_parser:decode(Packet),
+    Request = lwm2m_coap_message_parser:decode(Packet),
     #coap_message{type = con, method = Method, id=Id, token = Token, payload = Payload, options = Options} = Request,
     ?LOGT("receive coap request Method=~p, Id=~p, Token=~p, Options=~p, Payload=~p", [Method, Id, Token, Options, Payload]),
     Request.
@@ -630,13 +630,13 @@ test_send_coap_response(UdpSock, Host, Port, Code, Content, Request, Ack) ->
     is_list(Host) orelse error("Host is not a string"),
 
     {ok, IpAddr} = inet:getaddr(Host, inet),
-    Response = coap_message:response(Code, Content, Request),
+    Response = lwm2m_coap_message:response(Code, Content, Request),
     Response2 = case Ack of
                     true -> Response#coap_message{type = ack};
                     false -> Response
                 end,
     ?LOGT("test_send_coap_response Response=~p", [Response2]),
-    ResponseBinary = coap_message_parser:encode(Response2),
+    ResponseBinary = lwm2m_coap_message_parser:encode(Response2),
     ?LOGT("test udp socket send to ~p:~p, data=~p", [IpAddr, Port, ResponseBinary]),
     ok = gen_udp:send(UdpSock, IpAddr, Port, ResponseBinary).
 
@@ -647,12 +647,12 @@ test_send_coap_observe_ack(UdpSock, Host, Port, Code, Content, Request) ->
     is_list(Host) orelse error("Host is not a string"),
 
     {ok, IpAddr} = inet:getaddr(Host, inet),
-    Response = coap_message:response(Code, Content, Request),
-    Response1 = coap_message:set(observe, 5, Response),
+    Response = lwm2m_coap_message:response(Code, Content, Request),
+    Response1 = lwm2m_coap_message:set(observe, 5, Response),
     Response2 = Response1#coap_message{type = ack},
 
     ?LOGT("test_send_coap_response Response=~p", [Response2]),
-    ResponseBinary = coap_message_parser:encode(Response2),
+    ResponseBinary = lwm2m_coap_message_parser:encode(Response2),
     ?LOGT("test udp socket send to ~p:~p, data=~p", [IpAddr, Port, ResponseBinary]),
     ok = gen_udp:send(UdpSock, IpAddr, Port, ResponseBinary).
 
@@ -662,10 +662,10 @@ test_send_coap_notif(UdpSock, Host, Port, Content, ObSeq, Request) ->
     is_list(Host) orelse error("Host is not a string"),
 
     {ok, IpAddr} = inet:getaddr(Host, inet),
-    Notif = coap_message:response({ok, content}, Content, Request),
-    NewNotif = coap_message:set(observe, ObSeq, Notif),
+    Notif = lwm2m_coap_message:response({ok, content}, Content, Request),
+    NewNotif = lwm2m_coap_message:set(observe, ObSeq, Notif),
     ?LOGT("test_send_coap_notif Response=~p", [NewNotif]),
-    NotifBinary = coap_message_parser:encode(NewNotif),
+    NotifBinary = lwm2m_coap_message_parser:encode(NewNotif),
     ?LOGT("test udp socket send to ~p:~p, data=~p", [IpAddr, Port, NotifBinary]),
     ok = gen_udp:send(UdpSock, IpAddr, Port, NotifBinary).
 

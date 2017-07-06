@@ -31,25 +31,25 @@ start() ->
     start(Port).
 
 start(Port) ->
-    coap_server:start(),
-    coap_server:start_udp(lwm2m_udp_socket, Port),
+    lwm2m_coap_server:start(),
+    lwm2m_coap_server:start_udp(lwm2m_udp_socket, Port),
 
     CertFile = application:get_env(?APP, certfile, ""),
     KeyFile = application:get_env(?APP, keyfile, ""),
     case (filelib:is_regular(CertFile) andalso filelib:is_regular(KeyFile)) of
         true ->
-            coap_server:start_dtls(lwm2m_dtls_socket, [{certfile, CertFile}, {keyfile, KeyFile}]);
+            lwm2m_coap_server:start_dtls(lwm2m_dtls_socket, [{certfile, CertFile}, {keyfile, KeyFile}]);
         false ->
             ?LOG(error, "certfile ~p or keyfile ~p are not valid, turn off coap DTLS", [CertFile, KeyFile])
     end,
 
-    coap_server_registry:add_handler([<<"rd">>], emq_lwm2m_resource, undefined).
+    lwm2m_coap_server_registry:add_handler([<<"rd">>], emq_lwm2m_resource, undefined).
 
 
 stop() ->
-    coap_server:stop_udp(lwm2m_udp_socket),
-    coap_server:stop_dtls(lwm2m_dtls_socket),
-    coap_server:stop(undefined).
+    lwm2m_coap_server:stop_udp(lwm2m_udp_socket),
+    lwm2m_coap_server:stop_dtls(lwm2m_dtls_socket),
+    lwm2m_coap_server:stop(undefined).
 
 
 
