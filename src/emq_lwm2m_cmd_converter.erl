@@ -1,5 +1,5 @@
 %%--------------------------------------------------------------------
-%% Copyright (c) 2016-2017 Feng Lee <feng@emqtt.io>. All Rights Reserved.
+%% Copyright (c) 2016-2017 EMQ Enterprise, Inc. (http://emqtt.io)
 %%
 %% Licensed under the Apache License, Version 2.0 (the "License");
 %% you may not use this file except in compliance with the License.
@@ -19,7 +19,7 @@
 -author("Feng Lee <feng@emqtt.io>").
 
 -include("emq_lwm2m.hrl").
--include_lib("gen_coap/include/coap.hrl").
+-include_lib("lwm2m_coap/include/coap.hrl").
 
 -export([mqtt_payload_to_coap_request/1, coap_response_to_mqtt_payload/4]).
 
@@ -31,7 +31,7 @@
 mqtt_payload_to_coap_request(InputCmd = #{?MQ_COMMAND := <<"Read">>}) ->
     {ObjectId, ObjectInstanceId, ResourceId} = get_oid_rid(InputCmd),
     Path = build_path({ObjectId, ObjectInstanceId, ResourceId}),
-    {coap_message:request(con, get, <<>>, [{uri_path, Path}, {'accept', ?LWM2M_FORMAT_PLAIN_TEXT}]), InputCmd};
+    {lwm2m_coap_message:request(con, get, <<>>, [{uri_path, Path}, {'accept', ?LWM2M_FORMAT_PLAIN_TEXT}]), InputCmd};
 mqtt_payload_to_coap_request(InputCmd = #{?MQ_COMMAND := <<"Write">>}) ->
     {ObjectId, ObjectInstanceId, ResourceId} = get_oid_rid(InputCmd),
     Path = build_path({ObjectId, ObjectInstanceId, ResourceId}),
@@ -46,20 +46,20 @@ mqtt_payload_to_coap_request(InputCmd = #{?MQ_COMMAND := <<"Write">>}) ->
 mqtt_payload_to_coap_request(InputCmd = #{?MQ_COMMAND := <<"Execute">>}) ->
     {ObjectId, ObjectInstanceId, ResourceId} = get_oid_rid(InputCmd),
     Path = build_path({ObjectId, ObjectInstanceId, ResourceId}),
-    {coap_message:request(con, post, <<>>, [{uri_path, Path}]), InputCmd};
+    {lwm2m_coap_message:request(con, post, <<>>, [{uri_path, Path}]), InputCmd};
 mqtt_payload_to_coap_request(InputCmd = #{?MQ_COMMAND := <<"Discover">>}) ->
     {ObjectId, ObjectInstanceId, ResourceId} = get_oid_rid(InputCmd),
     Path = build_path({ObjectId, ObjectInstanceId, ResourceId}),
-    {coap_message:request(con, get, <<>>, [{uri_path, Path}, {'accept', ?LWM2M_FORMAT_LINK}]), InputCmd};
+    {lwm2m_coap_message:request(con, get, <<>>, [{uri_path, Path}, {'accept', ?LWM2M_FORMAT_LINK}]), InputCmd};
 mqtt_payload_to_coap_request(InputCmd = #{?MQ_COMMAND := <<"Write-Attributes">>}) ->
     {ObjectId, ObjectInstanceId, ResourceId} = get_oid_rid(InputCmd),
     Path = build_path({ObjectId, ObjectInstanceId, ResourceId}),
     Query = maps:get(?MQ_VALUE, InputCmd),
-    {coap_message:request(con, put, <<>>, [{uri_path, Path}, {uri_query, [Query]}]), InputCmd};
+    {lwm2m_coap_message:request(con, put, <<>>, [{uri_path, Path}, {uri_query, [Query]}]), InputCmd};
 mqtt_payload_to_coap_request(InputCmd = #{?MQ_COMMAND := <<"Observe">>}) ->
     {ObjectId, ObjectInstanceId, ResourceId} = get_oid_rid(InputCmd),
     Path = build_path({ObjectId, ObjectInstanceId, ResourceId}),
-    {coap_message:request(con, get, <<>>, [{uri_path, Path}, {observe, 0}]), InputCmd}.
+    {lwm2m_coap_message:request(con, get, <<>>, [{uri_path, Path}, {observe, 0}]), InputCmd}.
 
 
 coap_response_to_mqtt_payload(Method, CoapPayload, Format, Ref=#{?MQ_COMMAND := <<"Read">>}) ->
@@ -238,7 +238,7 @@ process_write_resource_command(Method, Path, InputCmd=#{?MQ_VALUE_TYPE := Type, 
                             <<"binary">> -> {<<"application/octet-stream">>, to_binary(Value)};
                             <<"json">>   -> error("not support now")
                         end,
-    {coap_message:request(con, Method, Payload, [{uri_path, Path}, {content_format, Format}]), InputCmd}.
+    {lwm2m_coap_message:request(con, Method, Payload, [{uri_path, Path}, {content_format, Format}]), InputCmd}.
 
 
 error_code(not_acceptable) ->

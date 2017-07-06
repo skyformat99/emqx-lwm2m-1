@@ -1,5 +1,5 @@
 %%--------------------------------------------------------------------
-%% Copyright (c) 2016-2017 Feng Lee <feng@emqtt.io>. All Rights Reserved.
+%% Copyright (c) 2016-2017 EMQ Enterprise, Inc. (http://emqtt.io)
 %%
 %% Licensed under the Apache License, Version 2.0 (the "License");
 %% you may not use this file except in compliance with the License.
@@ -19,7 +19,6 @@
 -author("Feng Lee <feng@emqtt.io>").
 
 -include("emq_lwm2m.hrl").
--include_lib("gen_coap/include/coap.hrl").
 -include_lib("xmerl/include/xmerl.hrl").
 
 -export([get_obj_def/2, get_object_id/1, get_object_and_resource_id/2]).

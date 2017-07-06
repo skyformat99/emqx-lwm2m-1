@@ -1,5 +1,5 @@
 %%--------------------------------------------------------------------
-%% Copyright (c) 2016-2017 Feng Lee <feng@emqtt.io>. All Rights Reserved.
+%% Copyright (c) 2016-2017 EMQ Enterprise, Inc. (http://emqtt.io)
 %%
 %% Licensed under the Apache License, Version 2.0 (the "License");
 %% you may not use this file except in compliance with the License.
@@ -20,10 +20,10 @@
 
 -include_lib("emqttd/include/emqttd.hrl").
 -include_lib("emqttd/include/emqttd_protocol.hrl").
--include_lib("gen_coap/include/coap.hrl").
+-include_lib("lwm2m_coap/include/coap.hrl").
 
 
--behaviour(coap_resource).
+-behaviour(lwm2m_coap_resource).
 
 -export([coap_discover/2, coap_get/4, coap_post/5, coap_put/5, coap_delete/3,
     coap_observe/4, coap_unobserve/1, handle_info/2, coap_ack/2]).
