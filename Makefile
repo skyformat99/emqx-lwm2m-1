@@ -2,21 +2,21 @@ PROJECT = emq_lwm2m
 PROJECT_DESCRIPTION = LWM2M Gateway
 PROJECT_VERSION = 0.1
 
-DEPS = lager gen_coap jsx
-dep_lager    = git https://github.com/basho/lager
-dep_gen_coap = git https://github.com/grutabow/gen_coap  lwm2m
-dep_jsx      = git https://github.com/talentdeficit/jsx
+DEPS = lager lwm2m_coap jsx
+dep_lager      = git https://github.com/basho/lager
+dep_lwm2m_coap = git https://github.com/grutabow/lwm2m-coap
+dep_jsx        = git https://github.com/talentdeficit/jsx
 
 
 BUILD_DEPS = emqttd cuttlefish
-dep_emqttd = git https://github.com/emqtt/emqttd emq22
+dep_emqttd     = git https://github.com/emqtt/emqttd emq22
 dep_cuttlefish = git https://github.com/emqtt/cuttlefish
 
 ERLC_OPTS += +debug_info
 ERLC_OPTS += +'{parse_transform, lager_transform}'
 TEST_ERLC_OPTS += +'{parse_transform, lager_transform}'
 
-#NO_AUTOPATCH = gen_coap
+NO_AUTOPATCH = lwm2m_coap
 
 include erlang.mk
 
