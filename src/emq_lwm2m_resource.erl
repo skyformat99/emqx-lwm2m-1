@@ -54,13 +54,20 @@ coap_get(ChId, Prefix, Name, Query) ->
 % LWM2M REGISTER COMMAND
 coap_post(ChId, [?LWM2M_REGISTER_PREFIX], [], Query, Content) ->
     #lwm2m_query{epn = Epn, lwm2m_ver = Ver, life_time = LifeTime} = parse_query(Query),
-    Location = list_to_binary(io_lib:format("~.16B", [random:uniform(65535)])),
-    ?LOG(debug, "~p ~p REGISTER command Query=~p, Content=~p, Location=~p", [self(), ChId, Query, Content, Location]),
-    put(lwm2m_context, #lwm2m_context{epn = Epn, location = Location, life_time = LifeTime}),
-    % TODO: parse content
-    % TODO: check lwm2m version
-    emq_lwm2m_mqtt_adapter:start_link(self(), Epn, ChId),
-    {ok, created, #coap_content{payload = list_to_binary(io_lib:format("/rd/~s", [Location]))}};
+    case check_lwm2m_version(Ver) of
+        true ->
+            Location = list_to_binary(io_lib:format("~.16B", [random:uniform(65535)])),
+            ?LOG(debug, "~p ~p REGISTER command Query=~p, Content=~p, Location=~p", [self(), ChId, Query, Content, Location]),
+            put(lwm2m_context, #lwm2m_context{epn = Epn, location = Location, life_time = LifeTime}),
+            % TODO: parse content
+            emq_lwm2m_mqtt_adapter:start_link(self(), Epn, ChId),
+            {ok, created, #coap_content{payload = list_to_binary(io_lib:format("/rd/~s", [Location]))}};
+        false ->
+            ?LOG(error, "refuse REGISTER from ~p due to wrong LWM2M version ~p", [ChId, Ver]),
+            quit(ChId),
+            {error, not_acceptable}
+    end;
+
 
 % LWM2M UPDATE COMMAND
 coap_post(ChId, [?LWM2M_REGISTER_PREFIX], [Location], Query, Content) ->
@@ -91,7 +98,7 @@ coap_delete(ChId, [?LWM2M_REGISTER_PREFIX], [Location]) ->
     case Location of
         TrueLocation ->
             emq_lwm2m_mqtt_adapter:stop(ChId),
-            self() !{coap_error, ChId, undefined, [], shutdown};
+            quit(ChId);
         _Other ->
             ?LOG(error, "ignore DE-REGISTER command due to mismatch location ~p vs ~p", [Location, TrueLocation]),
             ignore
@@ -135,11 +142,7 @@ parse_query([<<$e, $p, $=, Rest/binary>>|T], Query=#lwm2m_query{}) ->
 parse_query([<<$l, $t, $=, Rest/binary>>|T], Query=#lwm2m_query{}) ->
     parse_query(T, Query#lwm2m_query{life_time = binary_to_integer(Rest)});
 parse_query([<<$l, $w, $m, $2, $m, $=, Rest/binary>>|T], Query=#lwm2m_query{}) ->
-    Version =   case catch binary_to_float(Rest) of
-                    {badarg, _} -> binary_to_integer(Rest);
-                    Value       -> Value
-                end,
-    parse_query(T, Query#lwm2m_query{lwm2m_ver = Version}).
+    parse_query(T, Query#lwm2m_query{lwm2m_ver = Rest}).
 
 data_format([]) ->
     <<"text/plain">>;
@@ -149,6 +152,14 @@ data_format([{_, _}|T]) ->
     data_format(T).
 
 
+
+check_lwm2m_version(<<"1.0">>) -> true;
+check_lwm2m_version(<<"1">>)   -> true;
+check_lwm2m_version(_)         -> false.
+
+
+quit(ChId) ->
+    self() !{coap_error, ChId, undefined, [], shutdown}.
 
 
 % end of file

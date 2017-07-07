@@ -16,8 +16,6 @@ ERLC_OPTS += +debug_info
 ERLC_OPTS += +'{parse_transform, lager_transform}'
 TEST_ERLC_OPTS += +'{parse_transform, lager_transform}'
 
-NO_AUTOPATCH = lwm2m_coap
-
 include erlang.mk
 
 app.config::
