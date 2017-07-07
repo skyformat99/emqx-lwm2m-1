@@ -60,7 +60,7 @@ coap_post(ChId, [?LWM2M_REGISTER_PREFIX], [], Query, Content) ->
             ?LOG(debug, "~p ~p REGISTER command Query=~p, Content=~p, Location=~p", [self(), ChId, Query, Content, Location]),
             put(lwm2m_context, #lwm2m_context{epn = Epn, location = Location, life_time = LifeTime}),
             % TODO: parse content
-            emq_lwm2m_mqtt_adapter:start_link(self(), Epn, ChId),
+            emq_lwm2m_mqtt_adapter:start_link(self(), Epn, ChId, LifeTime),
             {ok, created, #coap_content{payload = list_to_binary(io_lib:format("/rd/~s", [Location]))}};
         false ->
             ?LOG(error, "refuse REGISTER from ~p due to wrong LWM2M version ~p", [ChId, Ver]),

@@ -28,13 +28,13 @@
 -include_lib("emqttd/include/emqttd_protocol.hrl").
 -include_lib("eunit/include/eunit.hrl").
 
-start(_, <<"attacker">>, _, _) ->
+start(_, <<"attacker">>, _, _, _) ->
     {stop, auth_failure};
-start(ClientId, Username, Password, _Channel) ->
+start(ClientId, Username, Password, _Channel, KeepaliveInterval) ->
     true = is_binary(ClientId),
     (true = ( is_binary(Username)) orelse (Username == undefined) ),
     (true = ( is_binary(Password)) orelse (Password == undefined) ),
-    self() ! {keepalive, start, 10},
+    self() ! {keepalive, start, KeepaliveInterval},
     {ok, []}.
 
 publish(Topic, Payload) ->

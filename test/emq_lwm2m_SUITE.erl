@@ -27,7 +27,7 @@
 -include_lib("eunit/include/eunit.hrl").
 
 
-all() -> [case01_register, case02_update_deregister, case03_register_wrong_version,
+all() -> [case01_register, case02_update_deregister, case03_register_wrong_version, case04_register_and_lifetime_timeout,
     case10_read,
     case20_write,
     case30_execute,
@@ -171,8 +171,45 @@ case03_register_wrong_version(_Config) ->
 
 
 case04_register_and_lifetime_timeout(_Config) ->
-    % TODO:
-    ok.
+    test_mqtt_broker:start_link(),
+    {ok, _Started} = application:ensure_all_started(emq_lwm2m),
+    timer:sleep(100),
+
+    % ----------------------------------------
+    % REGISTER command
+    % ----------------------------------------
+    Epn = "urn:oma:lwm2m:oma:3",
+    MsgId = 12,
+    {ok, UdpSock} = test_open_udp_socket(),
+    test_send_coap_request( UdpSock,
+                            post,
+                            "coap://127.0.0.1/rd?ep="++Epn++"&lt=1&lwm2m=1",
+                            #coap_content{format = <<"text/plain">>, payload = <<"</1>, </2>, </3>, </4>, </5>">>},
+                            [],
+                            MsgId),
+    timer:sleep(100),
+    #coap_message{type = ack, method = Method, payload = Location} = test_recv_coap_response(UdpSock),
+    ?assertEqual({ok,created}, Method),
+    ?assertMatch(<<"/rd/", _Rest/binary>>, Location),
+    LocationString = binary_to_list(Location),
+    timer:sleep(50),
+    SubTopic = list_to_binary("lwm2m/"++Epn++"/command"),
+    ?assertEqual([SubTopic], test_mqtt_broker:get_subscrbied_topics()),
+
+    % TODO: is mqtt and responder process alive?
+
+
+    % ----------------------------------------
+    % lifetime timeout
+    % ----------------------------------------
+    timer:sleep(4000),
+    ?assertEqual([], test_mqtt_broker:get_subscrbied_topics()),
+
+
+    test_close_udp_socket(UdpSock),
+    ok = application:stop(emq_lwm2m),
+    ok = application:stop(lwm2m_coap),
+    test_mqtt_broker:stop().
 
 
 case10_read(_Config) ->

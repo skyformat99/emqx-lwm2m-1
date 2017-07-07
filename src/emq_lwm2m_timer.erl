@@ -20,9 +20,9 @@
 
 -include("emq_lwm2m.hrl").
 
--export([cancel_timer/1, start_timer/2, restart_timer/1, kick_timer/1, is_timeout/1]).
+-export([cancel_timer/1, start_timer/2, kick_timer/1, is_timeout/1]).
 
--record(timer_state, {interval, kickme, tref, message}).
+-record(timer_state, {kickme, tref, message}).
 
 -define(LOG(Level, Format, Args),
     lager:Level("LWM2M-TIMER: " ++ Format, Args)).
@@ -43,12 +43,8 @@ kick_timer(State=#timer_state{kickme = true}) ->
 start_timer(Sec, Msg) ->
     ?LOG(debug, "emq_lwm2m_timer:start_timer ~p", [Sec]),
     TRef = erlang:send_after(timer:seconds(Sec), self(), Msg),
-    #timer_state{interval = Sec, kickme = false, tref = TRef, message = Msg}.
+    #timer_state{kickme = false, tref = TRef, message = Msg}.
 
-restart_timer(State=#timer_state{interval = Sec, message = Msg}) ->
-    ?LOG(debug, "emq_lwm2m_timer:restart_timer ~p", [Sec]),
-    TRef = erlang:send_after(timer:seconds(Sec), self(), Msg),
-    State#timer_state{kickme = false, tref = TRef}.
 
 is_timeout(#timer_state{kickme = Bool}) ->
     not Bool.

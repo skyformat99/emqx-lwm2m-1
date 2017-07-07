@@ -26,14 +26,14 @@
 
 
 %% API.
--export([start_link/3, publish/5, keepalive/1]).
+-export([start_link/4, publish/5, keepalive/1]).
 -export([stop/1]).
 
 %% gen_server.
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
     terminate/2, code_change/3]).
 
--record(state, {proto, peer, keepalive, coap_pid, rsp_topic, sub_topic}).
+-record(state, {proto, peer, keepalive_interval, keepalive, coap_pid, rsp_topic, sub_topic}).
 
 -define(DEFAULT_KEEP_ALIVE_DURATION,  60*2).
 
@@ -43,14 +43,14 @@
 
 
 -ifdef(TEST).
--define(PROTO_INIT(A, B, C, D),         test_mqtt_broker:start(A, B, C, D)).
+-define(PROTO_INIT(A, B, C, D, E),      test_mqtt_broker:start(A, B, C, D, E)).
 -define(PROTO_SUBSCRIBE(X, Y),          test_mqtt_broker:subscribe(X)).
 -define(PROTO_UNSUBSCRIBE(X, Y),        test_mqtt_broker:unsubscribe(X)).
 -define(PROTO_PUBLISH(A1, A2, P),       test_mqtt_broker:publish(A1, A2)).
 -define(PROTO_DELIVER_ACK(A1, A2),      A2).
 -define(PROTO_SHUTDOWN(A, B),           ok).
 -else.
--define(PROTO_INIT(A, B, C, D),         proto_init(A, B, C, D)).
+-define(PROTO_INIT(A, B, C, D, E),      proto_init(A, B, C, D, E)).
 -define(PROTO_SUBSCRIBE(X, Y),          proto_subscribe(X, Y)).
 -define(PROTO_UNSUBSCRIBE(X, Y),        proto_unsubscribe(X, Y)).
 -define(PROTO_PUBLISH(A1, A2, P),       proto_publish(A1, A2, P)).
@@ -63,8 +63,8 @@
 %%--------------------------------------------------------------------
 
 
-start_link(CoapPid, ClientId, ChId) ->
-    gen_server:start_link({via, emq_lwm2m_registry, ChId}, ?MODULE, {CoapPid, ClientId, ChId}, []).
+start_link(CoapPid, ClientId, ChId, KeepAliveInterval) ->
+    gen_server:start_link({via, emq_lwm2m_registry, ChId}, ?MODULE, {CoapPid, ClientId, ChId, KeepAliveInterval}, []).
 
 stop(ChId) ->
     gen_server:stop(emq_lwm2m_registry:whereis_name(ChId)).
@@ -79,14 +79,14 @@ keepalive(ChId)->
 %% gen_server Callbacks
 %%--------------------------------------------------------------------
 
-init({CoapPid, ClientId, ChId}) ->
+init({CoapPid, ClientId, ChId, KeepAliveInterval}) ->
     ?LOG(debug, "try to start adapter ClientId=~p, ChId=~p", [ClientId, ChId]),
-    case ?PROTO_INIT(ClientId, undefined, undefined, ChId) of
+    case ?PROTO_INIT(ClientId, undefined, undefined, ChId, KeepAliveInterval) of
         {ok, Proto}           ->
             Topic = <<"lwm2m/", ClientId/binary, "/command">>,
             NewProto = ?PROTO_SUBSCRIBE(Topic, Proto),
             RspTopic = <<"lwm2m/", ClientId/binary, "/response">>,
-            {ok, #state{coap_pid = CoapPid, proto = NewProto, peer = ChId, rsp_topic = RspTopic, sub_topic = Topic}};
+            {ok, #state{coap_pid = CoapPid, proto = NewProto, peer = ChId, rsp_topic = RspTopic, sub_topic = Topic, keepalive_interval = KeepAliveInterval}};
         Other                 ->
             {stop, Other}
     end.
@@ -124,7 +124,7 @@ handle_call(Request, _From, State) ->
     ?LOG(error, "adapter unexpected call ~p", [Request]),
     {reply, ignored, State, hibernate}.
 
-handle_cast(keepalive, State=#state{keepalive = undefined}) ->
+handle_cast(keepalive, State=#state{keepalive_interval = undefined}) ->
     {noreply, State, hibernate};
 handle_cast(keepalive, State=#state{keepalive = Keepalive}) ->
     NewKeepalive = emq_lwm2m_timer:kick_timer(Keepalive),
@@ -153,11 +153,11 @@ handle_info({keepalive, start, Interval}, StateData) ->
     KeepAlive = emq_lwm2m_timer:start_timer(Interval, {keepalive, check}),
     {noreply, StateData#state{keepalive = KeepAlive}, hibernate};
 
-handle_info({keepalive, check}, StateData = #state{keepalive = KeepAlive}) ->
+handle_info({keepalive, check}, StateData = #state{keepalive = KeepAlive, keepalive_interval = Interval}) ->
     case emq_lwm2m_timer:is_timeout(KeepAlive) of
         false ->
             ?LOG(debug, "Keepalive checked ok", []),
-            NewKeepAlive = emq_lwm2m_timer:restart_timer(KeepAlive),
+            NewKeepAlive = emq_lwm2m_timer:start_timer(Interval, {keepalive, check}),
             {noreply, StateData#state{keepalive = NewKeepAlive}};
         true ->
             ?LOG(debug, "Keepalive timeout", []),
@@ -186,6 +186,7 @@ handle_info(Info, State) ->
 terminate(Reason, #state{proto = Proto, keepalive = KeepAlive, sub_topic = SubTopic}) ->
     emq_lwm2m_timer:cancel_timer(KeepAlive),
     CleanFun =  fun(Error) ->
+                    ?LOG(debug, "unsubscribe ~p while exiting", [SubTopic]),
                     NewProto = ?PROTO_UNSUBSCRIBE(SubTopic, Proto),
                     ?PROTO_SHUTDOWN(Error, NewProto)
                 end,
@@ -207,7 +208,7 @@ code_change(_OldVsn, State, _Extra) ->
 %% Internal Functions
 %%--------------------------------------------------------------------
 
-proto_init(ClientId, Username, Password, Channel) ->
+proto_init(ClientId, Username, Password, Channel, KeepAliveInterval) ->
     SendFun = fun(_Packet) -> ok end,
     PktOpts = [{max_clientid_len, 96}, {max_packet_size, 512}],
     Proto = emqttd_protocol:init(Channel, SendFun, PktOpts),
@@ -215,7 +216,7 @@ proto_init(ClientId, Username, Password, Channel) ->
                                    username   = Username,
                                    password   = Password,
                                    clean_sess = true,
-                                   keep_alive = application:get_env(?APP, keepalive, ?DEFAULT_KEEP_ALIVE_DURATION)},
+                                   keep_alive = KeepAliveInterval},
     case emqttd_protocol:received(?CONNECT_PACKET(ConnPkt), Proto) of
         {ok, Proto1}                              -> {ok, Proto1};
         {stop, {shutdown, auth_failure}, _Proto2} -> {stop, auth_failure};
