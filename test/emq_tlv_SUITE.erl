@@ -1,0 +1,140 @@
+%%--------------------------------------------------------------------
+%% Copyright (c) 2016-2017 EMQ Enterprise, Inc. (http://emqtt.io)
+%%
+%% Licensed under the Apache License, Version 2.0 (the "License");
+%% you may not use this file except in compliance with the License.
+%% You may obtain a copy of the License at
+%%
+%%     http://www.apache.org/licenses/LICENSE-2.0
+%%
+%% Unless required by applicable law or agreed to in writing, software
+%% distributed under the License is distributed on an "AS IS" BASIS,
+%% WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+%% See the License for the specific language governing permissions and
+%% limitations under the License.
+%%--------------------------------------------------------------------
+
+-module(emq_tlv_SUITE).
+
+-compile(export_all).
+
+-define(LOGT(Format, Args), lager:debug("TEST_SUITE: " ++ Format, Args)).
+
+-include("emq_lwm2m.hrl").
+-include_lib("lwm2m_coap/include/coap.hrl").
+-include_lib("eunit/include/eunit.hrl").
+
+
+all() -> [case01, case02, case03, case04, case05].
+
+
+
+init_per_suite(Config) ->
+    Config.
+
+end_per_suite(Config) ->
+    Config.
+
+
+case01(_Config) ->
+    Data = <<16#C8, 16#00, 16#14, 16#4F, 16#70, 16#65, 16#6E, 16#20, 16#4D, 16#6F, 16#62, 16#69, 16#6C, 16#65, 16#20, 16#41, 16#6C, 16#6C, 16#69, 16#61, 16#6E, 16#63, 16#65>>,
+    R = emq_lwm2m_tlv:parse(Data),
+    Exp = [
+        #{<<"tlv_resource_with_value">> => 16#00, <<"value">> => <<"Open Mobile Alliance">>}
+    ],
+    ?assertEqual(Exp, R).
+
+case02(_Config) ->
+    Data = <<16#86, 16#06, 16#41, 16#00, 16#01, 16#41, 16#01, 16#05>>,
+    R = emq_lwm2m_tlv:parse(Data),
+    Exp = [
+        #{<<"tlv_multiple_resource">> => 16#06, <<"value">> => [
+                                                                    #{<<"tlv_resource_instance">> => 16#00, <<"value">> => <<1>>},
+                                                                    #{<<"tlv_resource_instance">> => 16#01, <<"value">> => <<5>>}
+            ]}
+    ],
+    ?assertEqual(Exp, R).
+
+case03(_Config) ->
+    Data = <<16#C8, 16#00, 16#14, 16#4F, 16#70, 16#65, 16#6E, 16#20, 16#4D, 16#6F, 16#62, 16#69, 16#6C, 16#65, 16#20, 16#41, 16#6C, 16#6C, 16#69, 16#61, 16#6E, 16#63, 16#65, 16#C8, 16#01, 16#16, 16#4C, 16#69, 16#67, 16#68, 16#74, 16#77, 16#65, 16#69, 16#67, 16#68, 16#74, 16#20, 16#4D, 16#32, 16#4D, 16#20, 16#43, 16#6C, 16#69, 16#65, 16#6E, 16#74, 16#C8, 16#02, 16#09, 16#33, 16#34, 16#35, 16#30, 16#30, 16#30, 16#31, 16#32, 16#33>>,
+    R = emq_lwm2m_tlv:parse(Data),
+    Exp = [
+            #{<<"tlv_resource_with_value">> => 16#00, <<"value">> => <<"Open Mobile Alliance">>},
+            #{<<"tlv_resource_with_value">> => 16#01, <<"value">> => <<"Lightweight M2M Client">>},
+            #{<<"tlv_resource_with_value">> => 16#02, <<"value">> => <<"345000123">>}
+            ],
+    ?assertEqual(Exp, R).
+
+
+case04(_Config) ->
+    % 6.4.3.1 Single Object Instance Request Example
+    Data = <<16#C8, 16#00, 16#14, 16#4F, 16#70, 16#65, 16#6E, 16#20, 16#4D, 16#6F, 16#62, 16#69, 16#6C, 16#65, 16#20, 16#41, 16#6C, 16#6C, 16#69, 16#61, 16#6E, 16#63, 16#65, 16#C8, 16#01, 16#16, 16#4C, 16#69, 16#67, 16#68, 16#74, 16#77, 16#65, 16#69, 16#67, 16#68, 16#74, 16#20, 16#4D, 16#32, 16#4D, 16#20, 16#43, 16#6C, 16#69, 16#65, 16#6E, 16#74, 16#C8, 16#02, 16#09, 16#33, 16#34, 16#35, 16#30, 16#30, 16#30, 16#31, 16#32, 16#33, 16#C3, 16#03, 16#31, 16#2E, 16#30, 16#86, 16#06, 16#41, 16#00, 16#01, 16#41, 16#01, 16#05, 16#88, 16#07, 16#08, 16#42, 16#00, 16#0E, 16#D8, 16#42, 16#01, 16#13, 16#88, 16#87, 16#08, 16#41, 16#00, 16#7D, 16#42, 16#01, 16#03, 16#84, 16#C1, 16#09, 16#64, 16#C1, 16#0A, 16#0F, 16#83, 16#0B, 16#41, 16#00, 16#00, 16#C4, 16#0D, 16#51, 16#82, 16#42, 16#8F, 16#C6, 16#0E, 16#2B, 16#30, 16#32, 16#3A, 16#30, 16#30, 16#C1, 16#10, 16#55>>,
+    R = emq_lwm2m_tlv:parse(Data),
+    Exp = [
+            #{<<"tlv_resource_with_value">> => 16#00, <<"value">> => <<"Open Mobile Alliance">>},
+            #{<<"tlv_resource_with_value">> => 16#01, <<"value">> => <<"Lightweight M2M Client">>},
+            #{<<"tlv_resource_with_value">> => 16#02, <<"value">> => <<"345000123">>},
+            #{<<"tlv_resource_with_value">> => 16#03, <<"value">> => <<"1.0">>},
+            #{<<"tlv_multiple_resource">> => 16#06, <<"value">> => [
+                                                                        #{<<"tlv_resource_instance">> => 16#00, <<"value">> => <<1>>},
+                                                                        #{<<"tlv_resource_instance">> => 16#01, <<"value">> => <<5>>}
+                ]},
+            #{<<"tlv_multiple_resource">> => 16#07, <<"value">> => [
+                                                                        #{<<"tlv_resource_instance">> => 16#00, <<"value">> => <<16#0ED8:16>>},
+                                                                        #{<<"tlv_resource_instance">> => 16#01, <<"value">> => <<16#1388:16>>}
+                ]},
+            #{<<"tlv_multiple_resource">> => 16#08, <<"value">> => [
+                                                                        #{<<"tlv_resource_instance">> => 16#00, <<"value">> => <<16#7d>>},
+                                                                        #{<<"tlv_resource_instance">> => 16#01, <<"value">> => <<16#0384:16>>}
+            ]},
+            #{<<"tlv_resource_with_value">> => 16#09, <<"value">> => <<16#64>>},
+            #{<<"tlv_resource_with_value">> => 16#0A, <<"value">> => <<16#0F>>},
+            #{<<"tlv_multiple_resource">> => 16#0B, <<"value">> => [
+                #{<<"tlv_resource_instance">> => 16#00, <<"value">> => <<16#00>>}
+            ]},
+            #{<<"tlv_resource_with_value">> => 16#0D, <<"value">> => <<16#5182428F:32>>},
+            #{<<"tlv_resource_with_value">> => 16#0E, <<"value">> => <<"+02:00">>},
+            #{<<"tlv_resource_with_value">> => 16#10, <<"value">> => <<"U">>}
+          ],
+    ?assertEqual(Exp, R).
+
+
+
+
+case05(_Config) ->
+    Data = <<16#08, 16#00, 16#79, 16#C8, 16#00, 16#14, 16#4F, 16#70, 16#65, 16#6E, 16#20, 16#4D, 16#6F, 16#62, 16#69, 16#6C, 16#65, 16#20, 16#41, 16#6C, 16#6C, 16#69, 16#61, 16#6E, 16#63, 16#65, 16#C8, 16#01, 16#16, 16#4C, 16#69, 16#67, 16#68, 16#74, 16#77, 16#65, 16#69, 16#67, 16#68, 16#74, 16#20, 16#4D, 16#32, 16#4D, 16#20, 16#43, 16#6C, 16#69, 16#65, 16#6E, 16#74, 16#C8, 16#02, 16#09, 16#33, 16#34, 16#35, 16#30, 16#30, 16#30, 16#31, 16#32, 16#33, 16#C3, 16#03, 16#31, 16#2E, 16#30, 16#86, 16#06, 16#41, 16#00, 16#01, 16#41, 16#01, 16#05, 16#88, 16#07, 16#08, 16#42, 16#00, 16#0E, 16#D8, 16#42, 16#01, 16#13, 16#88, 16#87, 16#08, 16#41, 16#00, 16#7D, 16#42, 16#01, 16#03, 16#84, 16#C1, 16#09, 16#64, 16#C1, 16#0A, 16#0F, 16#83, 16#0B, 16#41, 16#00, 16#00, 16#C4, 16#0D, 16#51, 16#82, 16#42, 16#8F, 16#C6, 16#0E, 16#2B, 16#30, 16#32, 16#3A, 16#30, 16#30, 16#C1, 16#10, 16#55>>,
+    R = emq_lwm2m_tlv:parse(Data),
+    Exp = [
+        #{<<"tlv_object_instance">> => 16#00, <<"value">> => [
+            #{<<"tlv_resource_with_value">> => 16#00, <<"value">> => <<"Open Mobile Alliance">>},
+            #{<<"tlv_resource_with_value">> => 16#01, <<"value">> => <<"Lightweight M2M Client">>},
+            #{<<"tlv_resource_with_value">> => 16#02, <<"value">> => <<"345000123">>},
+            #{<<"tlv_resource_with_value">> => 16#03, <<"value">> => <<"1.0">>},
+            #{<<"tlv_multiple_resource">> => 16#06, <<"value">> => [
+                #{<<"tlv_resource_instance">> => 16#00, <<"value">> => <<1>>},
+                #{<<"tlv_resource_instance">> => 16#01, <<"value">> => <<5>>}
+            ]},
+            #{<<"tlv_multiple_resource">> => 16#07, <<"value">> => [
+                #{<<"tlv_resource_instance">> => 16#00, <<"value">> => <<16#0ED8:16>>},
+                #{<<"tlv_resource_instance">> => 16#01, <<"value">> => <<16#1388:16>>}
+            ]},
+            #{<<"tlv_multiple_resource">> => 16#08, <<"value">> => [
+                #{<<"tlv_resource_instance">> => 16#00, <<"value">> => <<16#7d>>},
+                #{<<"tlv_resource_instance">> => 16#01, <<"value">> => <<16#0384:16>>}
+            ]},
+            #{<<"tlv_resource_with_value">> => 16#09, <<"value">> => <<16#64>>},
+            #{<<"tlv_resource_with_value">> => 16#0A, <<"value">> => <<16#0F>>},
+            #{<<"tlv_multiple_resource">> => 16#0B, <<"value">> => [
+                #{<<"tlv_resource_instance">> => 16#00, <<"value">> => <<16#00>>}
+            ]},
+            #{<<"tlv_resource_with_value">> => 16#0D, <<"value">> => <<16#5182428F:32>>},
+            #{<<"tlv_resource_with_value">> => 16#0E, <<"value">> => <<"+02:00">>},
+            #{<<"tlv_resource_with_value">> => 16#10, <<"value">> => <<"U">>}
+        ]}
+    ],
+    ?assertEqual(Exp, R).
+
+
+
+
+
