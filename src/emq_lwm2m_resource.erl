@@ -37,7 +37,7 @@
 
 -record(lwm2m_query, {epn, life_time, sms, lwm2m_ver}).
 
--record(lwm2m_context, {epn, location, life_time}).
+-record(lwm2m_context, {epn, location}).
 
 
 % resource operations
@@ -54,16 +54,16 @@ coap_get(ChId, Prefix, Name, Query) ->
 % LWM2M REGISTER COMMAND
 coap_post(ChId, [?LWM2M_REGISTER_PREFIX], [], Query, Content) ->
     #lwm2m_query{epn = Epn, lwm2m_ver = Ver, life_time = LifeTime} = parse_query(Query),
-    case check_lwm2m_version(Ver) of
+    case (check_epn(Epn) andalso check_lifetime(LifeTime) andalso check_lwm2m_version(Ver)) of
         true ->
             Location = list_to_binary(io_lib:format("~.16B", [random:uniform(65535)])),
             ?LOG(debug, "~p ~p REGISTER command Query=~p, Content=~p, Location=~p", [self(), ChId, Query, Content, Location]),
-            put(lwm2m_context, #lwm2m_context{epn = Epn, location = Location, life_time = LifeTime}),
+            put(lwm2m_context, #lwm2m_context{epn = Epn, location = Location}),
             % TODO: parse content
             emq_lwm2m_mqtt_adapter:start_link(self(), Epn, ChId, LifeTime),
             {ok, created, #coap_content{payload = list_to_binary(io_lib:format("/rd/~s", [Location]))}};
         false ->
-            ?LOG(error, "refuse REGISTER from ~p due to wrong LWM2M version ~p", [ChId, Ver]),
+            ?LOG(error, "refuse REGISTER from ~p due to wrong parameters, epn=~p, lifetime=~p, lwm2m_ver=~p", [ChId, Epn, LifeTime, Ver]),
             quit(ChId),
             {error, not_acceptable}
     end;
@@ -74,10 +74,10 @@ coap_post(ChId, [?LWM2M_REGISTER_PREFIX], [Location], Query, Content) ->
     #lwm2m_query{life_time = LifeTime} = parse_query(Query),
     #lwm2m_context{location = TrueLocation} = get(lwm2m_context),
     ?LOG(debug, "~p ~p UPDATE command location=~p, LifeTime=~p, Query=~p, Content=~p", [self(), ChId, Location, LifeTime, Query, Content]),
-    % TODO: update lifetime
     % TODO: parse content
     case Location of
         TrueLocation ->
+            emq_lwm2m_mqtt_adapter:new_keepalive_interval(ChId, LifeTime),
             {ok, changed, #coap_content{}};
         _Other       ->
             ?LOG(error, "Location mismatch ~p vs ~p", [Location, TrueLocation]),
@@ -156,6 +156,12 @@ data_format([{_, _}|T]) ->
 check_lwm2m_version(<<"1.0">>) -> true;
 check_lwm2m_version(<<"1">>)   -> true;
 check_lwm2m_version(_)         -> false.
+
+check_epn(undefined) -> false;
+check_epn(_)         -> true.
+
+check_lifetime(undefined) -> false;
+check_lifetime(_)         -> true.
 
 
 quit(ChId) ->

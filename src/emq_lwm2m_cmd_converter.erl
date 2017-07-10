@@ -156,6 +156,8 @@ coap_observe_response_to_mqtt_payload({ok, content}, CoapPayload, Format, Ref) -
     coap_read_response_to_mqtt_payload2(CoapPayload, Format, Ref).
 
 
+build_path({undefined, undefined, undefined}) ->
+    error("objectid is missing");
 build_path({ObjectId, undefined, undefined}) ->
     %ObjDef = emq_lwm2m_xml_object:get_obj_def(ObjectName, false),
     %Oid = emq_lwm2m_xml_object:get_object_id(ObjDef),

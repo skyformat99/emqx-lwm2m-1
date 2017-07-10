@@ -26,7 +26,7 @@
 
 
 %% API.
--export([start_link/4, publish/5, keepalive/1]).
+-export([start_link/4, publish/5, keepalive/1, new_keepalive_interval/2]).
 -export([stop/1]).
 
 %% gen_server.
@@ -74,6 +74,9 @@ publish(ChId, Method, Response, DataFormat, Ref) ->
 
 keepalive(ChId)->
     gen_server:cast({via, emq_lwm2m_registry, ChId}, keepalive).
+
+new_keepalive_interval(ChId, Interval) ->
+    gen_server:cast({via, emq_lwm2m_registry, ChId}, {new_keepalive_interval, Interval}).
 
 %%--------------------------------------------------------------------
 %% gen_server Callbacks
@@ -123,6 +126,10 @@ handle_call(session, _From, State = #state{proto = ProtoState}) ->
 handle_call(Request, _From, State) ->
     ?LOG(error, "adapter unexpected call ~p", [Request]),
     {reply, ignored, State, hibernate}.
+
+
+handle_cast({new_keepalive_interval, Interval}, State=#state{}) ->
+    {noreply, State#state{keepalive_interval = Interval}, hibernate};
 
 handle_cast(keepalive, State=#state{keepalive_interval = undefined}) ->
     {noreply, State, hibernate};
