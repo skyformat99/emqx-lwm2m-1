@@ -46,16 +46,16 @@ parse_loop(Data, Acc) ->
 
 parse_step1(<<?TLV_TYPE_OBJECT_INSTANCE:2, IdLength:1, LengthType:2, InlineLength:3, Rest/binary>>) ->
     {Id, Value, Rest2} = parse_step2(id_length_bit_width(IdLength), LengthType, InlineLength, Rest),
-    {#{<<"tlv_object_instance">> => Id,  <<"value">> => parse_loop(Value, [])}, Rest2};
+    {#{tlv_object_instance => Id,  value => parse_loop(Value, [])}, Rest2};
 parse_step1(<<?TLV_TYPE_RESOURCE_INSTANCE:2, IdLength:1, LengthType:2, InlineLength:3, Rest/binary>>) ->
     {Id, Value, Rest2} = parse_step2(id_length_bit_width(IdLength), LengthType, InlineLength, Rest),
-    {#{<<"tlv_resource_instance">> => Id, <<"value">> => Value}, Rest2};
+    {#{tlv_resource_instance => Id, value => Value}, Rest2};
 parse_step1(<<?TLV_TYPE_MULTIPLE_RESOURCE:2, IdLength:1, LengthType:2, InlineLength:3, Rest/binary>>) ->
     {Id, Value, Rest2} = parse_step2(id_length_bit_width(IdLength), LengthType, InlineLength, Rest),
-    {#{<<"tlv_multiple_resource">> => Id, <<"value">> => parse_loop(Value, [])}, Rest2};
+    {#{tlv_multiple_resource => Id, value => parse_loop(Value, [])}, Rest2};
 parse_step1(<<?TLV_TYPE_RESOURCE_WITH_VALUE:2, IdLength:1, LengthType:2, InlineLength:3, Rest/binary>>) ->
     {Id, Value, Rest2} = parse_step2(id_length_bit_width(IdLength), LengthType, InlineLength, Rest),
-    {#{<<"tlv_resource_with_value">> => Id,  <<"value">> => Value}, Rest2}.
+    {#{tlv_resource_with_value => Id,  value => Value}, Rest2}.
 
 parse_step2(IdLength, ?TLV_NO_LENGTH_FIELD, Length, Data) ->
     <<Id:IdLength, Value:Length/binary, Rest/binary>> = Data,
@@ -83,19 +83,19 @@ encode(Dict) ->
 
 encode([], Acc) ->
     Acc;
-encode([#{<<"tlv_object_instance">> := Id, <<"value">> := Value}|T], Acc) ->
+encode([#{tlv_object_instance := Id, value := Value}|T], Acc) ->
     SubItems = encode(Value, <<>>),
     NewBinary = encode_body(?TLV_TYPE_OBJECT_INSTANCE, Id, SubItems),
     encode(T, <<Acc/binary, NewBinary/binary>>);
-encode([#{<<"tlv_resource_instance">> := Id, <<"value">> := Value}|T], Acc) ->
+encode([#{tlv_resource_instance := Id, value := Value}|T], Acc) ->
     ValBinary = encode_value(Value),
     NewBinary = encode_body(?TLV_TYPE_RESOURCE_INSTANCE, Id, ValBinary),
     encode(T, <<Acc/binary, NewBinary/binary>>);
-encode([#{<<"tlv_multiple_resource">> := Id, <<"value">> := Value}|T], Acc) ->
+encode([#{tlv_multiple_resource := Id, value := Value}|T], Acc) ->
     SubItems = encode(Value, <<>>),
     NewBinary = encode_body(?TLV_TYPE_MULTIPLE_RESOURCE, Id, SubItems),
     encode(T, <<Acc/binary, NewBinary/binary>>);
-encode([#{<<"tlv_resource_with_value">> := Id, <<"value">> := Value}|T], Acc) ->
+encode([#{tlv_resource_with_value := Id, value := Value}|T], Acc) ->
     ValBinary = encode_value(Value),
     NewBinary = encode_body(?TLV_TYPE_RESOURCE_WITH_VALUE, Id, ValBinary),
     encode(T, <<Acc/binary, NewBinary/binary>>).
@@ -131,6 +131,9 @@ encode_value(Value) when is_float(Value) ->
     <<Value:32/float>>;
 encode_value(Value) ->
     error(io_lib:format("unsupport format ~p", [Value])).
+
+
+
 
 binary_to_hex_string(Data) ->
     lists:flatten([io_lib:format("~2.16.0B ",[X]) || <<X:8>> <= Data ]).
