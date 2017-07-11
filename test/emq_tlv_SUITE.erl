@@ -42,7 +42,9 @@ case01(_Config) ->
     Exp = [
         #{<<"tlv_resource_with_value">> => 16#00, <<"value">> => <<"Open Mobile Alliance">>}
     ],
-    ?assertEqual(Exp, R).
+    ?assertEqual(Exp, R),
+    EncodedBinary = emq_lwm2m_tlv:encode(Exp),
+    ?assertEqual(EncodedBinary, Data).
 
 case02(_Config) ->
     Data = <<16#86, 16#06, 16#41, 16#00, 16#01, 16#41, 16#01, 16#05>>,
@@ -53,7 +55,9 @@ case02(_Config) ->
                                                                     #{<<"tlv_resource_instance">> => 16#01, <<"value">> => <<5>>}
             ]}
     ],
-    ?assertEqual(Exp, R).
+    ?assertEqual(Exp, R),
+    EncodedBinary = emq_lwm2m_tlv:encode(Exp),
+    ?assertEqual(EncodedBinary, Data).
 
 case03(_Config) ->
     Data = <<16#C8, 16#00, 16#14, 16#4F, 16#70, 16#65, 16#6E, 16#20, 16#4D, 16#6F, 16#62, 16#69, 16#6C, 16#65, 16#20, 16#41, 16#6C, 16#6C, 16#69, 16#61, 16#6E, 16#63, 16#65, 16#C8, 16#01, 16#16, 16#4C, 16#69, 16#67, 16#68, 16#74, 16#77, 16#65, 16#69, 16#67, 16#68, 16#74, 16#20, 16#4D, 16#32, 16#4D, 16#20, 16#43, 16#6C, 16#69, 16#65, 16#6E, 16#74, 16#C8, 16#02, 16#09, 16#33, 16#34, 16#35, 16#30, 16#30, 16#30, 16#31, 16#32, 16#33>>,
@@ -63,7 +67,9 @@ case03(_Config) ->
             #{<<"tlv_resource_with_value">> => 16#01, <<"value">> => <<"Lightweight M2M Client">>},
             #{<<"tlv_resource_with_value">> => 16#02, <<"value">> => <<"345000123">>}
             ],
-    ?assertEqual(Exp, R).
+    ?assertEqual(Exp, R),
+    EncodedBinary = emq_lwm2m_tlv:encode(Exp),
+    ?assertEqual(EncodedBinary, Data).
 
 case03_0(_Config) ->
     Data = <<16#87, 16#02, 16#41, 16#7F, 16#07, 16#61, 16#01, 16#36, 16#01>>,
@@ -74,10 +80,9 @@ case03_0(_Config) ->
             #{<<"tlv_resource_instance">> => 16#0136, <<"value">> => <<16#01>>}
         ]}
     ],
-    ?assertEqual(Exp, R).
-
-
-
+    ?assertEqual(Exp, R),
+    EncodedBinary = emq_lwm2m_tlv:encode(Exp),
+    ?assertEqual(EncodedBinary, Data).
 
 case04(_Config) ->
     % 6.4.3.1 Single Object Instance Request Example
@@ -109,10 +114,9 @@ case04(_Config) ->
             #{<<"tlv_resource_with_value">> => 16#0E, <<"value">> => <<"+02:00">>},
             #{<<"tlv_resource_with_value">> => 16#10, <<"value">> => <<"U">>}
           ],
-    ?assertEqual(Exp, R).
-
-
-
+    ?assertEqual(Exp, R),
+    EncodedBinary = emq_lwm2m_tlv:encode(Exp),
+    ?assertEqual(EncodedBinary, Data).
 
 case05(_Config) ->
     % 6.4.3.2 Multiple Object Instance Request Examples
@@ -147,9 +151,9 @@ case05(_Config) ->
             #{<<"tlv_resource_with_value">> => 16#10, <<"value">> => <<"U">>}
         ]}
     ],
-    ?assertEqual(Exp, R).
-
-
+    ?assertEqual(Exp, R),
+    EncodedBinary = emq_lwm2m_tlv:encode(Exp),
+    ?assertEqual(EncodedBinary, Data).
 
 case06(_Config) ->
     % 6.4.3.2 Multiple Object Instance Request Examples
@@ -175,9 +179,9 @@ case06(_Config) ->
             #{<<"tlv_resource_with_value">> => 16#03, <<"value">> => <<16#7F>>}
         ]}
     ],
-    ?assertEqual(Exp, R).
-
-
+    ?assertEqual(Exp, R),
+    EncodedBinary = emq_lwm2m_tlv:encode(Exp),
+    ?assertEqual(EncodedBinary, Data).
 
 case07(_Config) ->
     % 6.4.3.2 Multiple Object Instance Request Examples
@@ -191,9 +195,9 @@ case07(_Config) ->
             #{<<"tlv_resource_with_value">> => 16#06, <<"value">> => <<16#01>>},
             #{<<"tlv_resource_with_value">> => 16#07, <<"value">> => <<$U>>}]}
     ],
-    ?assertEqual(Exp, R).
-
-
+    ?assertEqual(Exp, R),
+    EncodedBinary = emq_lwm2m_tlv:encode(Exp),
+    ?assertEqual(EncodedBinary, Data).
 
 case08(_Config) ->
     % 6.4.3.3 Example of Request on an Object Instance containing an Object Link Resource
@@ -208,10 +212,9 @@ case08(_Config) ->
         #{<<"tlv_resource_with_value">> => 16#01, <<"value">> => <<"8613800755500">>},
         #{<<"tlv_resource_with_value">> => 16#02, <<"value">> => <<16#12345678:32>>}
     ],
-    ?assertEqual(Exp, R).
-
-
-
+    ?assertEqual(Exp, R),
+    EncodedBinary = emq_lwm2m_tlv:encode(Exp),
+    ?assertEqual(EncodedBinary, Data).
 
 case09(_Config) ->
     % 6.4.3.3 Example of Request on an Object Instance containing an Object Link Resource
@@ -230,5 +233,7 @@ case09(_Config) ->
             #{<<"tlv_resource_with_value">> => 16#02, <<"value">> => <<16#FF, 16#FF, 16#FF, 16#FF>>}
         ]}
     ],
-    ?assertEqual(Exp, R).
+    ?assertEqual(Exp, R),
+    EncodedBinary = emq_lwm2m_tlv:encode(Exp),
+    ?assertEqual(EncodedBinary, Data).
 

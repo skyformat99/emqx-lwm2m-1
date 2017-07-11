@@ -18,12 +18,11 @@
 
 -author("Feng Lee <feng@emqtt.io>").
 
--export([parse/1]).
+-export([parse/1, encode/1]).
 
 -include("emq_lwm2m.hrl").
 
-%-define(LOG(Level, Format, Args), lager:Level("LWM2M-TLV: " ++ Format, Args)).
--define(LOG(Level, Format, Args), io:format("LWM2M-TLV: " ++ Format, Args)).
+-define(LOG(Level, Format, Args), lager:Level("LWM2M-TLV: " ++ Format, Args)).
 
 -define(TLV_TYPE_OBJECT_INSTANCE,     0).
 -define(TLV_TYPE_RESOURCE_INSTANCE,   1).
@@ -40,61 +39,98 @@ parse(Data) ->
     parse_loop(Data, []).
 
 parse_loop(<<>>, Acc)->
-    ?LOG(debug, "parse_loop() Acc=~p", [Acc]),
     lists:reverse(Acc);
 parse_loop(Data, Acc) ->
-    ?LOG(debug, "parse_loop() Data=~p, Acc=~p", [binary_to_hex_string(Data), Acc]),
     {New, Rest} = parse_step1(Data),
     parse_loop(Rest, [New|Acc]).
 
 parse_step1(<<?TLV_TYPE_OBJECT_INSTANCE:2, IdLength:1, LengthType:2, InlineLength:3, Rest/binary>>) ->
-    ?LOG(debug, "parse_step1 1 input IdLength=~p, LengthType=~p, InlineLength=~p, Rest=~p", [IdLength, LengthType, InlineLength, binary_to_hex_string(Rest)]),
     {Id, Value, Rest2} = parse_step2(id_length_bit_width(IdLength), LengthType, InlineLength, Rest),
-    ?LOG(debug, "parse_step1 1 return Id=~p, Rest=~p", [Id, binary_to_hex_string(Rest2)]),
     {#{<<"tlv_object_instance">> => Id,  <<"value">> => parse_loop(Value, [])}, Rest2};
 parse_step1(<<?TLV_TYPE_RESOURCE_INSTANCE:2, IdLength:1, LengthType:2, InlineLength:3, Rest/binary>>) ->
-    ?LOG(debug, "parse_step1 2 IdLength=~p, LengthType=~p, InlineLength=~p, Rest=~p", [IdLength, LengthType, InlineLength, binary_to_hex_string(Rest)]),
     {Id, Value, Rest2} = parse_step2(id_length_bit_width(IdLength), LengthType, InlineLength, Rest),
-    ?LOG(debug, "parse_step1 2 return Id=~p, Value=~p, Rest=~p", [Id, Value, binary_to_hex_string(Rest2)]),
     {#{<<"tlv_resource_instance">> => Id, <<"value">> => Value}, Rest2};
 parse_step1(<<?TLV_TYPE_MULTIPLE_RESOURCE:2, IdLength:1, LengthType:2, InlineLength:3, Rest/binary>>) ->
-    ?LOG(debug, "parse_step1 3 IdLength=~p, LengthType=~p, InlineLength=~p, Rest=~p", [IdLength, LengthType, InlineLength, binary_to_hex_string(Rest)]),
     {Id, Value, Rest2} = parse_step2(id_length_bit_width(IdLength), LengthType, InlineLength, Rest),
-    ?LOG(debug, "parse_step1 3 return Id=~p, Rest=~p", [Id, binary_to_hex_string(Rest2)]),
     {#{<<"tlv_multiple_resource">> => Id, <<"value">> => parse_loop(Value, [])}, Rest2};
 parse_step1(<<?TLV_TYPE_RESOURCE_WITH_VALUE:2, IdLength:1, LengthType:2, InlineLength:3, Rest/binary>>) ->
-    ?LOG(debug, "parse_step1 4 IdLength=~p, LengthType=~p, InlineLength=~p, Rest=~p", [IdLength, LengthType, InlineLength, binary_to_hex_string(Rest)]),
     {Id, Value, Rest2} = parse_step2(id_length_bit_width(IdLength), LengthType, InlineLength, Rest),
-    ?LOG(debug, "parse_step1 2 return Id=~p, Value=~p Rest=~p", [Id, Value, binary_to_hex_string(Rest2)]),
     {#{<<"tlv_resource_with_value">> => Id,  <<"value">> => Value}, Rest2}.
 
 parse_step2(IdLength, ?TLV_NO_LENGTH_FIELD, Length, Data) ->
-    ?LOG(debug, "parse_step2 IdLength=~p, Length=~p, Data=~p", [IdLength, Length, binary_to_hex_string(Data)]),
     <<Id:IdLength, Value:Length/binary, Rest/binary>> = Data,
     {Id, Value, Rest};
 parse_step2(IdLength, ?TLV_LEGNTH_8_BIT, _, Data) ->
-    ?LOG(debug, "parse_step2 8bit IdLength=~p, Data=~p", [IdLength, binary_to_hex_string(Data)]),
     <<Id:IdLength, Length:8, Rest/binary>> = Data,
     parse_step3(Id, Length, Rest);
 parse_step2(IdLength, ?TLV_LEGNTH_16_BIT, _, Data) ->
-    ?LOG(debug, "parse_step2 16bit IdLength=~p, Data=~p", [IdLength, binary_to_hex_string(Data)]),
     <<Id:IdLength, Length:16, Rest/binary>> = Data,
     parse_step3(Id, Length, Rest);
 parse_step2(IdLength, ?TLV_LEGNTH_24_BIT, _, Data) ->
-    ?LOG(debug, "parse_step2 24bit IdLength=~p, Data=~p", [IdLength, binary_to_hex_string(Data)]),
     <<Id:IdLength, Length:24, Rest/binary>> = Data,
     parse_step3(Id, Length, Rest).
 
 parse_step3(Id, Length, Data) ->
     <<Value:Length/binary, Rest/binary>> = Data,
-    ?LOG(debug, "parse_step3 Id=~p, Length=~p, Data=~p, Value=~p, Rest=~p", [Id, Length, binary_to_hex_string(Data), binary_to_hex_string(Value), binary_to_hex_string(Rest)]),
     {Id, Value, Rest}.
 
 id_length_bit_width(0) -> 8;
 id_length_bit_width(1) -> 16.
 
 
+encode(Dict) ->
+    encode(Dict, <<>>).
 
+encode([], Acc) ->
+    Acc;
+encode([#{<<"tlv_object_instance">> := Id, <<"value">> := Value}|T], Acc) ->
+    SubItems = encode(Value, <<>>),
+    NewBinary = encode_body(?TLV_TYPE_OBJECT_INSTANCE, Id, SubItems),
+    encode(T, <<Acc/binary, NewBinary/binary>>);
+encode([#{<<"tlv_resource_instance">> := Id, <<"value">> := Value}|T], Acc) ->
+    ValBinary = encode_value(Value),
+    NewBinary = encode_body(?TLV_TYPE_RESOURCE_INSTANCE, Id, ValBinary),
+    encode(T, <<Acc/binary, NewBinary/binary>>);
+encode([#{<<"tlv_multiple_resource">> := Id, <<"value">> := Value}|T], Acc) ->
+    SubItems = encode(Value, <<>>),
+    NewBinary = encode_body(?TLV_TYPE_MULTIPLE_RESOURCE, Id, SubItems),
+    encode(T, <<Acc/binary, NewBinary/binary>>);
+encode([#{<<"tlv_resource_with_value">> := Id, <<"value">> := Value}|T], Acc) ->
+    ValBinary = encode_value(Value),
+    NewBinary = encode_body(?TLV_TYPE_RESOURCE_WITH_VALUE, Id, ValBinary),
+    encode(T, <<Acc/binary, NewBinary/binary>>).
+
+encode_body(Type, Id, Value) ->
+    Size = byte_size(Value),
+    {IdLength, IdBinarySize, IdBinary} =    if
+                                                Id < 256 -> {0, 1, <<Id:8>>};
+                                                true     -> {1, 2, <<Id:16>>}
+                                            end,
+    if
+        Size < 8     -> <<Type:2, IdLength:1, ?TLV_NO_LENGTH_FIELD:2, Size:3, IdBinary:IdBinarySize/binary, Value:Size/binary>>;
+        Size < 256   -> <<Type:2, IdLength:1, ?TLV_LEGNTH_8_BIT:2, 0:3, IdBinary:IdBinarySize/binary, Size:8, Value:Size/binary>>;
+        Size < 65536 -> <<Type:2, IdLength:1, ?TLV_LEGNTH_16_BIT:2, 0:3, IdBinary:IdBinarySize/binary, Size:16, Value:Size/binary>>;
+        true         -> <<Type:2, IdLength:1, ?TLV_LEGNTH_24_BIT:2, 0:3, IdBinary:IdBinarySize/binary, Size:24, Value:Size/binary>>
+    end.
+
+encode_value(Value) when is_binary(Value) ->
+    Value;
+encode_value(Value) when is_list(Value) ->
+    list_to_binary(Value);
+encode_value(true) ->
+    <<1>>;
+encode_value(false) ->
+    <<0>>;
+encode_value(Value) when is_integer(Value) ->
+    if
+        Value > -128, Value < 128     -> <<Value>>;
+        Value > -32768, Value < 32768 -> <<Value:16>>;
+        true                          -> <<Value:24>>
+    end;
+encode_value(Value) when is_float(Value) ->
+    <<Value:32/float>>;
+encode_value(Value) ->
+    error(io_lib:format("unsupport format ~p", [Value])).
 
 binary_to_hex_string(Data) ->
     lists:flatten([io_lib:format("~2.16.0B ",[X]) || <<X:8>> <= Data ]).
