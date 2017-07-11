@@ -21,7 +21,7 @@
 -include("emq_lwm2m.hrl").
 -include_lib("xmerl/include/xmerl.hrl").
 
--export([get_obj_def/2, get_object_id/1, get_object_and_resource_id/2]).
+-export([get_obj_def/2, get_object_id/1, get_object_and_resource_id/2, get_resource_type/2]).
 
 -define(LOG(Level, Format, Args),
     lager:Level("LWM2M-OBJ: " ++ Format, Args)).
@@ -47,5 +47,10 @@ get_object_and_resource_id(ResourceNameBinary, ObjDefinition) ->
     ?LOG(debug, "get_object_and_resource_id ObjectId=~p, ResourceId=~p", [ObjectId, ResourceId]),
     {ObjectId, ResourceId}.
 
+
+get_resource_type(ResourceIdInt, ObjDefinition) ->
+    ResourceIdString = integer_to_list(ResourceIdInt),
+    [#xmlText{value=DataType}] = xmerl_xpath:string("Resources/Item[@ID=\""++ResourceIdString++"\"]/Type/text()", ObjDefinition),
+    DataType.
 
 

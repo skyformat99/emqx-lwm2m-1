@@ -10,7 +10,7 @@ Configure Plugin
 File: etc/emq_lwm2m.conf
 
 ```
-lwmwm.port = 5683
+lwmwm.port = 5783
 lwmwm.keepalive = 120
 lwmwm.certfile = etc/certs/cert.pem
 lwmwm.keyfile = etc/certs/key.pem
@@ -38,11 +38,6 @@ Downlink command topic is "lwm2m/{?device_end_point_name}/command".
 Uplink response topic is "lwm2m/{?device_end_point_name}/response".
 
 
-## Value Type
-Value may have following type:
-- text - ascii text format of int, float, string, boolean
-- binary - data is arbitrary binary which is base64-encoded.
-- json - json format of multi-resource. NOT support now.
 
 
 ### READ command
@@ -52,9 +47,7 @@ Value may have following type:
 {
     "CmdID": {?CmdID},
     "Command": "Read",
-    "ObjectID":  {?ObjectName},
-    "ObjectInstanceID": {?ObjectInstanceID},
-    "ResourceID": {?ResourceID}
+    "BaseName": {?BaseName}
 }
 ```
 
@@ -62,57 +55,20 @@ Response
 ```
 {
     "CmdID": {?CmdID},
-    "ObjectID":  {?ObjectName},
-    "ObjectInstanceID": {?ObjectInstanceID},
-    "ResourceID": {?ResourceID},
-    "ValueType": {?ValueType},
-    "Value": {?Value}
+    "Command": "Read",
+    "Result": {?JsonValue}
 }
 ```
 or
 ```
 {
     "CmdID": {?CmdID},
-    "ObjectID":  {?ObjectName},
-    "ObjectInstanceID": {?ObjectInstanceID},
-    "ResourceID": {?ResourceID},
-    "ValueType": {?ValueType},
+    "Command": "Read",
     "Error": {?Error}
 }
 ```
+- {?JsonValue} is the json presentation of LWM2M data, please refer to OMA-TS-LightweightM2M-V1_0-20170208-A.pdf section 6.4.4 JSON.
 
-
-#### Read Object - NOT SUPPORT YET
-```
-{
-    "CmdID": {?CmdID},
-    "Command": "Read",
-    "ObjectID":  {?ObjectName},
-    "ObjectInstanceID": {?ObjectInstanceID},
-}
-```
-
-Response
-```
-{
-    "CmdID": {?CmdID},
-    "ObjectID":  {?ObjectName},
-    "ObjectInstanceID": {?ObjectInstanceID},
-    "Values":
-    [
-        {
-            "ResourceID": {?ResourceID},
-            "ValueType": {?ValueType},
-            "Value": {?Value}
-        },
-        {
-            "ResourceID": {?ResourceIDX},
-            "ValueType": {?ValueTypeX},
-            "Value": {?ValueX}
-        }
-    ]
-}
-```
 
 
 ### WRITE command
@@ -121,71 +77,18 @@ Response
 {
     "CmdID": {?CmdID},
     "Command": "Write",
-    "ObjectID":  {?ObjectName},
-    "ObjectInstanceID": {?ObjectInstanceID},
-    "ResourceID": {?ResourceID},
-    "ValueType": {?ValueType},
-    "Value": {?Value}
+    "Value": {?JsonValue}
 }
 ```
 - {?CmdID}, an integer to identify a command response against its request.
-- {?ObjectName}, a string represents object name, mandatory.
-- {?ObjectInstanceID}, an integer, optional.
-- {?ResourceID}, a string represents resource name, mandatory.
-- {?ValueType}, a string represents the value type of {?Value}, mandatory.
-- {?Value}, this parameter could be variant type as {?ValueType} specified, mandatory.
+- {?JsonValue} is the json presentation of LWM2M data, please refer to OMA-TS-LightweightM2M-V1_0-20170208-A.pdf section 6.4.4 JSON.
 
 
 Response
-```
-{
-    "CmdID": {?CmdID},
-    "ObjectID":  {?ObjectName},
-    "ObjectInstanceID": {?ObjectInstanceID},
-    "ResourceID": {?ResourceID},
-    "Result": {?Code}
-}
-```
-- {?CmdID}, an integer to identify a command response against its request.
-- {?Code} could be "Changed", "Bad Request", "Not Found", "Unauthorized" or "Method Not Allowed"
-
-
-#### Write Object - NOT SUPPORT YET
 ```
 {
     "CmdID": {?CmdID},
     "Command": "Write",
-    "ObjectID":  {?ObjectName},
-    "ObjectInstanceID": {?ObjectInstanceID},
-    "Changes":
-    [
-        {
-            "ResourceID": {?ResourceID},
-            "ValueType": {?ValueType},
-            "Value": {?Value}
-        },
-        {
-            "ResourceID": {?ResourceIDX},
-            "ValueType": {?ValueTypeX},
-            "Value": {?ValueX}
-        },
-    ]
-}
-```
-- {?CmdID}, an integer to identify a command response against its request.
-- {?ObjectName}, a string represents object name, mandatory.
-- {?ObjectInstanceID}, an integer, optional.
-- {?ResourceID}, a string represents resource name, mandatory.
-- {?ValueType}, a string represents the value type of {?Value}, mandatory.
-- {?Value}, this parameter could be variant type as {?ValueType} specified, mandatory.
-
-
-Response
-```
-{
-    "CmdID": {?CmdID},
-    "ObjectID":  {?ObjectName},
-    "ObjectInstanceID": {?ObjectInstanceID},
     "Result": {?Code}
 }
 ```
@@ -193,8 +96,10 @@ Response
 - {?Code} could be "Changed", "Bad Request", "Not Found", "Unauthorized" or "Method Not Allowed"
 
 
+
+
 ## NOTES
-TLS or JSON format from lwm2m device are not supported now.
+Fireware object is not supported now.
 
 
 DTLS
