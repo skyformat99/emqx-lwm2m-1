@@ -1,0 +1,97 @@
+%%--------------------------------------------------------------------
+%% Copyright (c) 2016-2017 EMQ Enterprise, Inc. (http://emqtt.io)
+%%
+%% Licensed under the Apache License, Version 2.0 (the "License");
+%% you may not use this file except in compliance with the License.
+%% You may obtain a copy of the License at
+%%
+%%     http://www.apache.org/licenses/LICENSE-2.0
+%%
+%% Unless required by applicable law or agreed to in writing, software
+%% distributed under the License is distributed on an "AS IS" BASIS,
+%% WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+%% See the License for the specific language governing permissions and
+%% limitations under the License.
+%%--------------------------------------------------------------------
+
+-module(emq_json_SUITE).
+
+-compile(export_all).
+
+-define(LOGT(Format, Args), lager:debug("TEST_SUITE: " ++ Format, Args)).
+
+-include("emq_lwm2m.hrl").
+-include_lib("lwm2m_coap/include/coap.hrl").
+-include_lib("eunit/include/eunit.hrl").
+
+
+all() -> [case01, case02, case03].
+
+
+
+init_per_suite(Config) ->
+    Config.
+
+end_per_suite(Config) ->
+    Config.
+
+
+case01(_Config) ->
+    application:set_env(?APP, xml_dir, "../../test/xml"),
+    emq_lwm2m_xml_object_db:start_link(),
+    Input = [
+        #{tlv_resource_with_value => 16#00, value => <<"Open Mobile Alliance">>}
+    ],
+    R = emq_lwm2m_json:tlv_to_json(<<"/3/0/0">>, Input),
+    Exp = #{bn=><<"/3/0/0">>,e=>[#{sv=><<"Open Mobile Alliance">>}]},
+    ?assertEqual(jsx:encode(Exp), R),
+    %EncodedBinary = emq_lwm2m_tlv:encode(Exp),
+    %?assertEqual(EncodedBinary, Data),
+    emq_lwm2m_xml_object_db:stop().
+
+
+case02(_Config) ->
+    application:set_env(?APP, xml_dir, "../../test/xml"),
+    emq_lwm2m_xml_object_db:start_link(),
+    Input = [
+                #{tlv_resource_with_value => 16#00, value => <<"Open Mobile Alliance">>},
+                #{tlv_resource_with_value => 16#01, value => <<"Lightweight M2M Client">>},
+                #{tlv_resource_with_value => 16#02, value => <<"345000123">>}
+            ],
+    R = emq_lwm2m_json:tlv_to_json(<<"/3/0">>, Input),
+    Exp = #{bn=><<"/3/0">>,
+            e=> [
+                    #{n=><<"0">>, sv=><<"Open Mobile Alliance">>},
+                    #{n=><<"1">>, sv=><<"Lightweight M2M Client">>},
+                    #{n=><<"2">>, sv=><<"345000123">>}
+                ]},
+    ?assertEqual(jsx:encode(Exp), R),
+    %EncodedBinary = emq_lwm2m_tlv:encode(Exp),
+    %?assertEqual(EncodedBinary, Data),
+    emq_lwm2m_xml_object_db:stop().
+
+
+case03(_Config) ->
+    application:set_env(?APP, xml_dir, "../../test/xml"),
+    emq_lwm2m_xml_object_db:start_link(),
+    Input = [
+                #{
+                    tlv_multiple_resource => 16#07,
+                    value =>[
+                                #{tlv_resource_instance => 16#00, value => <<16#0ED8:16>>},
+                                #{tlv_resource_instance => 16#01, value => <<16#1388:16>>}
+                            ]
+                }
+            ],
+    R = emq_lwm2m_json:tlv_to_json(<<"/3/0/7">>, Input),
+    Exp = #{bn=><<"/3/0">>,
+            e=> [
+                #{n=><<"7/0">>, v=><<"3800">>},
+                #{n=><<"7/1">>, v=><<"5000">>}
+            ]},
+    ?assertEqual(jsx:encode(Exp), R),
+    %EncodedBinary = emq_lwm2m_tlv:encode(Exp),
+    %?assertEqual(EncodedBinary, Data),
+    emq_lwm2m_xml_object_db:stop().
+
+
