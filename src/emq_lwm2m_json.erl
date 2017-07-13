@@ -188,12 +188,15 @@ element_loop_level2([], Acc) ->
 element_loop_level2([H=#{<<"n">>:=Name}|T], Acc) ->
     BinaryValue = value_ex(H),
     Path = split_path(Name),
+    ?LOG(debug, "element_loop_level2 T=~p, Acc=~p", [T, Acc]),
     NewAcc = insert_resource_into_object(Path, BinaryValue, Acc),
+    ?LOG(debug, "element_loop_level2 NewAcc=~p", [NewAcc]),
     element_loop_level2(T, NewAcc).
 
 element_loop_level3([], Acc) ->
     Acc;
 element_loop_level3([H=#{<<"n">>:=Name}|T], Acc) ->
+    ?LOG(debug, "element_loop_level3 H=~p, T=~p, Acc=~p", [H, T, Acc]),
     BinaryValue = value_ex(H),
     Path = split_path(Name),
     NewAcc = insert_resource_into_object_instance(Path, BinaryValue, Acc),
@@ -228,38 +231,41 @@ value_ex(#{<<"ov">>:=Value}) ->
 
 
 insert_resource_into_object([ObjectInstanceId, ResourceId, ResourceInstanceId], Value, Acc) ->
+    ?LOG(debug, "insert_resource_into_object1 ObjectInstanceId=~p, ResourceId=~p, ResourceInstanceId=~p, Value=~p, Acc=~p", [ObjectInstanceId, ResourceId, ResourceInstanceId, Value, Acc]),
     case find_obj_instance(ObjectInstanceId, Acc) of
         undefined ->
-            NewMap = insert_resource_into_object_instance([ResourceId, ResourceInstanceId], Value, #{tlv_object_instance=>ObjectInstanceId, value=>[]}),
-            Acc ++ [NewMap];
-        ObjectInstance ->
-            NewMap = insert_resource_into_object_instance([ResourceId, ResourceInstanceId], Value, ObjectInstance),
+            NewList = insert_resource_into_object_instance([ResourceId, ResourceInstanceId], Value, []),
+            Acc ++ [#{tlv_object_instance=>ObjectInstanceId, value=>NewList}];
+        ObjectInstance = #{value:=List} ->
+            NewList = insert_resource_into_object_instance([ResourceId, ResourceInstanceId], Value, List),
             Acc2 = lists:delete(ObjectInstance, Acc),
-            Acc2 ++ [NewMap]
+            Acc2 ++ [ObjectInstance#{value=>NewList}]
     end;
 insert_resource_into_object([ObjectInstanceId, ResourceId], Value, Acc) ->
+    ?LOG(debug, "insert_resource_into_object1 ObjectInstanceId=~p, ResourceId=~p, Value=~p, Acc=~p", [ObjectInstanceId, ResourceId, Value, Acc]),
     case find_obj_instance(ObjectInstanceId, Acc) of
         undefined ->
-            NewMap = insert_resource_into_object_instance([ResourceId], Value, #{tlv_object_instance=>ObjectInstanceId, value=>[]}),
-            Acc ++ [NewMap];
-        ObjectInstance ->
-            NewMap = insert_resource_into_object_instance([ResourceId], Value, ObjectInstance),
+            NewList = insert_resource_into_object_instance([ResourceId], Value, []),
+            Acc ++ [#{tlv_object_instance=>ObjectInstanceId, value=>NewList}];
+        ObjectInstance = #{value:=List} ->
+            NewList = insert_resource_into_object_instance([ResourceId], Value, List),
             Acc2 = lists:delete(ObjectInstance, Acc),
-            Acc2 ++ [NewMap]
+            Acc2 ++ [ObjectInstance#{value=>NewList}]
     end.
 
 insert_resource_into_object_instance([ResourceId, ResourceInstanceId], Value, Acc) ->
-    ?LOG(debug, "insert_resource_into_object_instance() ResourceId=~p, ResourceInstanceId=~p, Value=~p, Acc=~p", [ResourceId, ResourceInstanceId, Value, Acc]),
+    ?LOG(debug, "insert_resource_into_object_instance1() ResourceId=~p, ResourceInstanceId=~p, Value=~p, Acc=~p", [ResourceId, ResourceInstanceId, Value, Acc]),
     case find_resource(ResourceId, Acc) of
         undefined ->
             NewList = insert_resource_instance_into_resource(ResourceInstanceId, Value, []),
-            [#{tlv_multiple_resource=>ResourceId, value=>NewList}];
+            Acc++[#{tlv_multiple_resource=>ResourceId, value=>NewList}];
         Resource = #{value:=List}->
             NewList = insert_resource_instance_into_resource(ResourceInstanceId, Value, List),
             Acc2 = lists:delete(Resource, Acc),
             Acc2 ++ [Resource#{value=>NewList}]
     end;
 insert_resource_into_object_instance([ResourceId], Value, Acc) ->
+    ?LOG(debug, "insert_resource_into_object_instance2() ResourceId=~p, Value=~p, Acc=~p", [ResourceId, Value, Acc]),
     NewMap = #{tlv_resource_with_value=>ResourceId, value=>Value},
     case find_resource(ResourceId, Acc) of
         undeinfed ->

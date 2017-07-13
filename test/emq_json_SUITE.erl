@@ -118,16 +118,16 @@ case04_two_multiple_resource(_Config) ->
         }
     ],
     R = emq_lwm2m_json:tlv_to_json(<<"/3/0">>, Input),
-    Exp = #{bn=><<"/3/0">>,
-        e=> [
-            #{n=><<"7/0">>, v=><<"3800">>},
-            #{n=><<"7/1">>, v=><<"5000">>},
-            #{n=><<"10/0">>, v=><<"257">>},
-            #{n=><<"10/1">>, v=><<"514">>}
-        ]},
-    ?assertEqual(jsx:encode(Exp), R),
-    %EncodedBinary = emq_lwm2m_tlv:encode(Exp),
-    %?assertEqual(EncodedBinary, Data),
+    Exp = jsx:encode(   #{  bn=><<"/3/0">>,
+                            e=> [
+                                    #{n=><<"7/0">>, v=><<"3800">>},
+                                    #{n=><<"7/1">>, v=><<"5000">>},
+                                    #{n=><<"10/0">>, v=><<"257">>},
+                                    #{n=><<"10/1">>, v=><<"514">>}
+                            ]}),
+    ?assertEqual(Exp, R),
+    EncodedTerm = emq_lwm2m_json:json_to_tlv(Exp),
+    ?assertEqual(Input, EncodedTerm),
     emq_lwm2m_xml_object_db:stop().
 
 
@@ -155,19 +155,20 @@ case05_two_multiple_resource_three_resource_with_value(_Config) ->
                 }
             ],
     R = emq_lwm2m_json:tlv_to_json(<<"/3/0">>, Input),
-    Exp = #{bn=><<"/3/0">>,
-        e=> [
-                #{n=><<"0">>, sv=><<"Open Mobile Alliance">>},
-                #{n=><<"1">>, sv=><<"Lightweight M2M Client">>},
-                #{n=><<"2">>, sv=><<"345000123">>},
-                #{n=><<"7/0">>, v=><<"3800">>},
-                #{n=><<"7/1">>, v=><<"5000">>},
-                #{n=><<"10/0">>, v=><<"257">>},
-                #{n=><<"10/1">>, v=><<"514">>}
-            ]},
-    ?assertEqual(jsx:encode(Exp), R),
-    %EncodedBinary = emq_lwm2m_tlv:encode(Exp),
-    %?assertEqual(EncodedBinary, Data),
+    Exp0 = #{bn=><<"/3/0">>,
+            e=> [
+                    #{n=><<"0">>, sv=><<"Open Mobile Alliance">>},
+                    #{n=><<"1">>, sv=><<"Lightweight M2M Client">>},
+                    #{n=><<"2">>, sv=><<"345000123">>},
+                    #{n=><<"7/0">>, v=><<"3800">>},
+                    #{n=><<"7/1">>, v=><<"5000">>},
+                    #{n=><<"10/0">>, v=><<"257">>},
+                    #{n=><<"10/1">>, v=><<"514">>}
+                ]},
+    Exp = jsx:encode(Exp0),
+    ?assertEqual(Exp, R),
+    EncodedTerm = emq_lwm2m_json:json_to_tlv(Exp),
+    ?assertEqual(Input, EncodedTerm),
     emq_lwm2m_xml_object_db:stop().
 
 
@@ -176,10 +177,6 @@ case06_one_object_instance(_Config) ->
     application:set_env(?APP, xml_dir, "../../test/xml"),
     emq_lwm2m_xml_object_db:start_link(),
     Input = [
-        #{
-            tlv_object_instance => 0,
-            value =>
-            [
                 #{tlv_resource_with_value => 16#00, value => <<"Open Mobile Alliance">>},
                 #{tlv_resource_with_value => 16#01, value => <<"Lightweight M2M Client">>},
                 #{tlv_resource_with_value => 16#02, value => <<"345000123">>},
@@ -197,22 +194,22 @@ case06_one_object_instance(_Config) ->
                         #{tlv_resource_instance => 16#01, value => <<16#0202:16>>}
                     ]
                 }
-            ]
-        }],
+            ],
     R = emq_lwm2m_json:tlv_to_json(<<"/3/0">>, Input),
-    Exp = #{bn=><<"/3/0">>,
-        e=> [
-            #{n=><<"0">>, sv=><<"Open Mobile Alliance">>},
-            #{n=><<"1">>, sv=><<"Lightweight M2M Client">>},
-            #{n=><<"2">>, sv=><<"345000123">>},
-            #{n=><<"7/0">>, v=><<"3800">>},
-            #{n=><<"7/1">>, v=><<"5000">>},
-            #{n=><<"10/0">>, v=><<"257">>},
-            #{n=><<"10/1">>, v=><<"514">>}
-        ]},
-    ?assertEqual(jsx:encode(Exp), R),
-    %EncodedBinary = emq_lwm2m_tlv:encode(Exp),
-    %?assertEqual(EncodedBinary, Data),
+    Exp0 = #{   bn=><<"/3/0">>,
+                e=> [
+                        #{n=><<"0">>, sv=><<"Open Mobile Alliance">>},
+                        #{n=><<"1">>, sv=><<"Lightweight M2M Client">>},
+                        #{n=><<"2">>, sv=><<"345000123">>},
+                        #{n=><<"7/0">>, v=><<"3800">>},
+                        #{n=><<"7/1">>, v=><<"5000">>},
+                        #{n=><<"10/0">>, v=><<"257">>},
+                        #{n=><<"10/1">>, v=><<"514">>}
+                ]},
+    Exp = jsx:encode(Exp0),
+    ?assertEqual(Exp, R),
+    EncodedTerm = emq_lwm2m_json:json_to_tlv(Exp),
+    ?assertEqual(Input, EncodedTerm),
     emq_lwm2m_xml_object_db:stop().
 
 
@@ -255,22 +252,23 @@ case07_two_object_instance(_Config) ->
             ]
         }],
     R = emq_lwm2m_json:tlv_to_json(<<"/3/0">>, Input),
-    Exp = #{bn=><<"/3">>,
-        e=> [
-            #{n=><<"0/0">>, sv=><<"Open Mobile Alliance">>},
-            #{n=><<"0/1">>, sv=><<"Lightweight M2M Client">>},
-            #{n=><<"0/2">>, sv=><<"345000123">>},
-            #{n=><<"0/7/0">>, v=><<"3800">>},
-            #{n=><<"0/7/1">>, v=><<"5000">>},
-            #{n=><<"0/10/0">>, v=><<"257">>},
-            #{n=><<"0/10/1">>, v=><<"514">>},
-            #{n=><<"1/0">>, sv=><<"AAA">>},
-            #{n=><<"1/1">>, sv=><<"BBB">>},
-            #{n=><<"1/2">>, sv=><<"CCC">>}
-        ]},
-    ?assertEqual(jsx:encode(Exp), R),
-    %EncodedBinary = emq_lwm2m_tlv:encode(Exp),
-    %?assertEqual(EncodedBinary, Data),
+    Exp0 = #{   bn=><<"/3">>,
+                e=> [
+                        #{n=><<"0/0">>, sv=><<"Open Mobile Alliance">>},
+                        #{n=><<"0/1">>, sv=><<"Lightweight M2M Client">>},
+                        #{n=><<"0/2">>, sv=><<"345000123">>},
+                        #{n=><<"0/7/0">>, v=><<"3800">>},
+                        #{n=><<"0/7/1">>, v=><<"5000">>},
+                        #{n=><<"0/10/0">>, v=><<"257">>},
+                        #{n=><<"0/10/1">>, v=><<"514">>},
+                        #{n=><<"1/0">>, sv=><<"AAA">>},
+                        #{n=><<"1/1">>, sv=><<"BBB">>},
+                        #{n=><<"1/2">>, sv=><<"CCC">>}
+                ]},
+    Exp = jsx:encode(Exp0),
+    ?assertEqual(Exp, R),
+    EncodedTerm = emq_lwm2m_json:json_to_tlv(Exp),
+    ?assertEqual(Input, EncodedTerm),
     emq_lwm2m_xml_object_db:stop().
 
 
