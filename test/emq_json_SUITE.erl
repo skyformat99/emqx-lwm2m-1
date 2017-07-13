@@ -46,10 +46,10 @@ case01(_Config) ->
         #{tlv_resource_with_value => 16#00, value => <<"Open Mobile Alliance">>}
     ],
     R = emq_lwm2m_json:tlv_to_json(<<"/3/0/0">>, Input),
-    Exp = #{bn=><<"/3/0/0">>,e=>[#{sv=><<"Open Mobile Alliance">>}]},
-    ?assertEqual(jsx:encode(Exp), R),
-    %EncodedBinary = emq_lwm2m_tlv:encode(Exp),
-    %?assertEqual(EncodedBinary, Data),
+    Exp = jsx:encode(#{bn=><<"/3/0/0">>,e=>[#{sv=><<"Open Mobile Alliance">>}]}),
+    ?assertEqual(Exp, R),
+    EncodedTerm = emq_lwm2m_json:json_to_tlv(Exp),
+    ?assertEqual(Input, EncodedTerm),
     emq_lwm2m_xml_object_db:stop().
 
 
@@ -62,15 +62,15 @@ case02(_Config) ->
                 #{tlv_resource_with_value => 16#02, value => <<"345000123">>}
             ],
     R = emq_lwm2m_json:tlv_to_json(<<"/3/0">>, Input),
-    Exp = #{bn=><<"/3/0">>,
-            e=> [
-                    #{n=><<"0">>, sv=><<"Open Mobile Alliance">>},
-                    #{n=><<"1">>, sv=><<"Lightweight M2M Client">>},
-                    #{n=><<"2">>, sv=><<"345000123">>}
-                ]},
-    ?assertEqual(jsx:encode(Exp), R),
-    %EncodedBinary = emq_lwm2m_tlv:encode(Exp),
-    %?assertEqual(EncodedBinary, Data),
+    Exp = jsx:encode(   #{  bn=><<"/3/0">>,
+                            e=> [
+                                    #{n=><<"0">>, sv=><<"Open Mobile Alliance">>},
+                                    #{n=><<"1">>, sv=><<"Lightweight M2M Client">>},
+                                    #{n=><<"2">>, sv=><<"345000123">>}
+                                ]}),
+    ?assertEqual(Exp, R),
+    EncodedTerm = emq_lwm2m_json:json_to_tlv(Exp),
+    ?assertEqual(Input, EncodedTerm),
     emq_lwm2m_xml_object_db:stop().
 
 
@@ -87,14 +87,14 @@ case03(_Config) ->
                 }
             ],
     R = emq_lwm2m_json:tlv_to_json(<<"/3/0/7">>, Input),
-    Exp = #{bn=><<"/3/0">>,
-            e=> [
-                #{n=><<"7/0">>, v=><<"3800">>},
-                #{n=><<"7/1">>, v=><<"5000">>}
-            ]},
-    ?assertEqual(jsx:encode(Exp), R),
-    %EncodedBinary = emq_lwm2m_tlv:encode(Exp),
-    %?assertEqual(EncodedBinary, Data),
+    Exp = jsx:encode(   #{  bn=><<"/3/0">>,
+                            e=> [
+                                #{n=><<"7/0">>, v=><<"3800">>},
+                                #{n=><<"7/1">>, v=><<"5000">>}
+                            ]}),
+    ?assertEqual(Exp, R),
+    EncodedTerm = emq_lwm2m_json:json_to_tlv(Exp),
+    ?assertEqual(Input, EncodedTerm),
     emq_lwm2m_xml_object_db:stop().
 
 
