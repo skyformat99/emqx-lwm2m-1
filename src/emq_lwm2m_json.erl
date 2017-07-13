@@ -44,18 +44,18 @@ tlv_to_json(BaseName, TlvData) ->
             encode_json(TrueBaseName, tlv_level2(<<>>, List2, ObjDefinition, []));
         [#{tlv_object_instance:=Id, value:=Value}] ->
             TrueBaseName = basename(BaseName, undefined, Id, undefined, 2),
-            encode_json(TrueBaseName, tlv_level1(TrueBaseName, Value, ObjDefinition, []));
+            encode_json(TrueBaseName, tlv_level2(<<>>, Value, ObjDefinition, []));
         List3=[#{tlv_object_instance:=Id, value:=Value}, _|_] ->
             TrueBaseName = basename(BaseName, Id, undefined, undefined, 1),
-            encode_json(TrueBaseName, tlv_level1(TrueBaseName, List3, ObjDefinition, []))
+            encode_json(TrueBaseName, tlv_level1(List3, ObjDefinition, []))
     end.
 
 
-tlv_level1(_RelativePath, [], _ObjDefinition, Acc) ->
+tlv_level1([], _ObjDefinition, Acc) ->
     Acc;
-tlv_level1(RelativePath, [#{tlv_object_instance:=_Id, value:=Value}|T], ObjDefinition, Acc) ->
-    New = tlv_level2(RelativePath, Value, ObjDefinition, []),
-    tlv_level1(RelativePath, T, ObjDefinition, Acc++New).
+tlv_level1([#{tlv_object_instance:=Id, value:=Value}|T], ObjDefinition, Acc) ->
+    New = tlv_level2(integer_to_binary(Id), Value, ObjDefinition, []),
+    tlv_level1(T, ObjDefinition, Acc++New).
 
 tlv_level2(_, [], _, Acc) ->
     Acc;
