@@ -35,61 +35,80 @@ tlv_to_json(BaseName, TlvData) ->
     case TlvData of
         [#{tlv_resource_with_value:=Id, value:=Value}] ->
             TrueBaseName = basename(BaseName, undefined, undefined, Id, 3),
-            Json1 = tlv_single_resource(TrueBaseName, Id, Value, ObjDefinition),
-            jsx:encode(Json1);
-        [#{tlv_multiple_resource:=Id, value:=Value}] ->
-            TrueBaseName1 = basename(BaseName, undefined, undefined, Id, 2),
-            Json2 = tlv_multi_resource(TrueBaseName1, Id, Value, ObjDefinition),
-            ?LOG(debug, "tlv_to_json() Json2=~p", [Json2]),
-            jsx:encode(Json2);
-        _ ->
-            List = tlv_loop(<<>>, TlvData, ObjDefinition, []),
-            jsx:encode(#{<<"bn">>=>BaseName, <<"e">>=>List})
+            encode_json(TrueBaseName, tlv_single_resource(Id, Value, ObjDefinition));
+        List1 = [#{tlv_resource_with_value:=_Id}, _|_] ->
+            TrueBaseName = basename(BaseName, undefined, undefined, undefined, 2),
+            encode_json(TrueBaseName, tlv_level2(<<>>, List1, ObjDefinition, []));
+        List2 = [#{tlv_multiple_resource:=_Id}|_] ->
+            TrueBaseName = basename(BaseName, undefined, undefined, undefined, 2),
+            encode_json(TrueBaseName, tlv_level2(<<>>, List2, ObjDefinition, []));
+        [#{tlv_object_instance:=Id, value:=Value}] ->
+            TrueBaseName = basename(BaseName, undefined, Id, undefined, 2),
+            encode_json(TrueBaseName, tlv_level1(TrueBaseName, Value, ObjDefinition, []));
+        List3=[#{tlv_object_instance:=Id, value:=Value}, _|_] ->
+            TrueBaseName = basename(BaseName, Id, undefined, undefined, 1),
+            encode_json(TrueBaseName, tlv_level1(TrueBaseName, List3, ObjDefinition, []))
     end.
 
 
-tlv_loop(_RelativePath, [], _ObjDefinition, Acc) ->
-    lists:reverse(Acc);
-tlv_loop(RelativePath, [#{tlv_object_instance:=Id, value:=Value}|T], ObjDefinition, Acc) ->
-    New = tlv_loop(<<(integer_to_binary(Id))/binary, $/>>, Value, ObjDefinition, []),
-    tlv_loop(RelativePath, T, ObjDefinition, New++Acc);
-tlv_loop(RelativePath, [#{tlv_resource_with_value:=Id, value:=Value}|T], ObjDefinition, Acc) ->
-    {K, V} = value(Value, Id, ObjDefinition),
-    Name = name(RelativePath, Id),
+tlv_level1(_RelativePath, [], _ObjDefinition, Acc) ->
+    Acc;
+tlv_level1(RelativePath, [#{tlv_object_instance:=_Id, value:=Value}|T], ObjDefinition, Acc) ->
+    New = tlv_level2(RelativePath, Value, ObjDefinition, []),
+    tlv_level1(RelativePath, T, ObjDefinition, Acc++New).
+
+tlv_level2(_, [], _, Acc) ->
+    Acc;
+tlv_level2(RelativePath, [#{tlv_resource_with_value:=ResourceId, value:=Value}|T], ObjDefinition, Acc) ->
+    {K, V} = value(Value, ResourceId, ObjDefinition),
+    Name = name(RelativePath, ResourceId),
     New = #{<<"n">> => Name, K => V},
-    tlv_loop(RelativePath, T, ObjDefinition, [New|Acc]);
-tlv_loop(RelativePath, [#{tlv_multiple_resource:=Id, value:=Value}|T], ObjDefinition, Acc) ->
-    SubList = tlv_resource_instance(<<RelativePath/binary, $/, (integer_to_binary(Id))/binary>>, Value, Id, ObjDefinition, []),
-    tlv_loop(RelativePath, T, ObjDefinition, SubList++Acc).
+    tlv_level2(RelativePath, T, ObjDefinition, Acc++[New]);
+tlv_level2(RelativePath, [#{tlv_multiple_resource:=ResourceId, value:=Value}|T], ObjDefinition, Acc) ->
+    NewRelativePath = name(RelativePath, ResourceId),
+    SubList = tlv_level3(NewRelativePath, Value, ResourceId, ObjDefinition, []),
+    tlv_level2(RelativePath, T, ObjDefinition, Acc++SubList).
 
-
-tlv_single_resource(BaseName, Id, Value, ObjDefinition) ->
-    {K, V} = value(Value, Id, ObjDefinition),
-    #{<<"bn">>=>BaseName, <<"e">>=>[#{K=>V}]}.
-
-tlv_multi_resource(BaseName, Id, Value, ObjDefinition) ->
-    Json = tlv_resource_instance(integer_to_binary(Id), Value, Id, ObjDefinition, []),
-    #{<<"bn">>=>BaseName, <<"e">>=>Json}.
-
-tlv_resource_instance(_RelativePath, [], _Id, _ObjDefinition, Acc) ->
+tlv_level3(_RelativePath, [], _Id, _ObjDefinition, Acc) ->
     lists:reverse(Acc);
-tlv_resource_instance(RelativePath, [#{tlv_resource_instance:=InsId, value:=Value}|T], Id, ObjDefinition, Acc) ->
-    {K, V} = value(Value, Id, ObjDefinition),
+tlv_level3(RelativePath, [#{tlv_resource_instance:=InsId, value:=Value}|T], ResourceId, ObjDefinition, Acc) ->
+    {K, V} = value(Value, ResourceId, ObjDefinition),
     Name = name(RelativePath, InsId),
     New = #{<<"n">> => Name, K => V},
-    tlv_resource_instance(RelativePath, T, Id, ObjDefinition, [New|Acc]).
+    tlv_level3(RelativePath, T, ResourceId, ObjDefinition, [New|Acc]).
+
+tlv_single_resource(Id, Value, ObjDefinition) ->
+    {K, V} = value(Value, Id, ObjDefinition),
+    [#{K=>V}].
 
 
-basename(OldBaseName, ObjectId, ObjectInstanceId, ResourceId, Level) ->
-    {Id1, Id2, Id3} =   case binary:split(OldBaseName, [<<$/>>], [global]) of
-                            [<<>>, ObjId, ObjInsId, ResId] -> {ObjId, ObjInsId, ResId};
-                            [<<>>, ObjId1, ObjInsId1]      -> {ObjId1, ObjInsId1, integer_to_binary(ResourceId)};
-                            [<<>>, ObjId2]                 -> {ObjId2, integer_to_binary(ObjectInstanceId), integer_to_binary(ResourceId)}
-                        end,
-    case Level of
-        3 -> <<$/, Id1/binary, $/, Id2/binary, $/, Id3/binary>>;
-        2 -> <<$/, Id1/binary, $/, Id2/binary>>;
-        1 -> <<$/, Id1/binary>>
+
+basename(OldBaseName, ObjectId, ObjectInstanceId, ResourceId, 3) ->
+    ?LOG(debug, "basename3 OldBaseName=~p, ObjectId=~p, ObjectInstanceId=~p, ResourceId=~p", [OldBaseName, ObjectId, ObjectInstanceId, ResourceId]),
+    case binary:split(OldBaseName, [<<$/>>], [global]) of
+        [<<>>, ObjId, ObjInsId, ResId, <<>>] -> <<$/, ObjId/binary, $/, ObjInsId/binary, $/, ResId/binary>>;
+        [<<>>, ObjId, ObjInsId, <<>>]        -> <<$/, ObjId/binary, $/, ObjInsId/binary, $/, (integer_to_binary(ResourceId))/binary>>;
+        [<<>>, ObjId, ObjInsId, ResId]       -> <<$/, ObjId/binary, $/, ObjInsId/binary, $/, ResId/binary>>;
+        [<<>>, ObjId, <<>>]                  -> <<$/, ObjId/binary, $/, (integer_to_binary(ObjectInstanceId))/binary, $/, (integer_to_binary(ResourceId))/binary>>;
+        [<<>>, ObjId, ObjInsId]              -> <<$/, ObjId/binary, $/, ObjInsId/binary, $/, (integer_to_binary(ResourceId))/binary>>;
+        [<<>>, ObjId]                        -> <<$/, ObjId/binary, $/, (integer_to_binary(ObjectInstanceId))/binary, $/, (integer_to_binary(ResourceId))/binary>>
+    end;
+basename(OldBaseName, ObjectId, ObjectInstanceId, ResourceId, 2) ->
+    ?LOG(debug, "basename2 OldBaseName=~p, ObjectId=~p, ObjectInstanceId=~p, ResourceId=~p", [OldBaseName, ObjectId, ObjectInstanceId, ResourceId]),
+    case binary:split(OldBaseName, [<<$/>>], [global]) of
+        [<<>>, ObjId, ObjInsId, _ResId, <<>>] -> <<$/, ObjId/binary, $/, ObjInsId/binary>>;
+        [<<>>, ObjId, ObjInsId, _ResId]       -> <<$/, ObjId/binary, $/, ObjInsId/binary>>;
+        [<<>>, ObjId, <<>>]                   -> <<$/, ObjId/binary, $/, (integer_to_binary(ObjectInstanceId))/binary>>;
+        [<<>>, ObjId, ObjInsId]               -> <<$/, ObjId/binary, $/, ObjInsId/binary>>;
+        [<<>>, ObjId]                         -> <<$/, ObjId/binary, $/, (integer_to_binary(ObjectInstanceId))/binary>>
+    end;
+basename(OldBaseName, ObjectId, ObjectInstanceId, ResourceId, 1) ->
+    ?LOG(debug, "basename1 OldBaseName=~p, ObjectId=~p, ObjectInstanceId=~p, ResourceId=~p", [OldBaseName, ObjectId, ObjectInstanceId, ResourceId]),
+    case binary:split(OldBaseName, [<<$/>>], [global]) of
+        [<<>>, ObjId, _ObjInsId, _ResId, <<>>] -> <<$/, ObjId/binary>>;
+        [<<>>, ObjId, _ObjInsId, _ResId]       -> <<$/, ObjId/binary>>;
+        [<<>>, ObjId, _ObjInsId]               -> <<$/, ObjId/binary>>;
+        [<<>>, ObjId]                          -> <<$/, ObjId/binary>>
     end.
 
 
@@ -136,3 +155,6 @@ value(Value, ResourceId, ObjDefinition) ->
             {<<"ov">>, io_lib:format("~b:~b", [ObjId, ObjInsId])}
     end.
 
+
+encode_json(BaseName, E) ->
+    jsx:encode(#{bn=>BaseName, e=>E}).
