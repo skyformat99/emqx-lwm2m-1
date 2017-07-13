@@ -229,26 +229,14 @@ value_ex(#{<<"ov">>:=Value}) ->
     [P1, P2] = binary:split(Value, [<<$:>>], [global]),
     <<(binary_to_integer(P1)):16, (binary_to_integer(P2)):16>>.
 
-
-insert_resource_into_object([ObjectInstanceId, ResourceId, ResourceInstanceId], Value, Acc) ->
-    ?LOG(debug, "insert_resource_into_object1 ObjectInstanceId=~p, ResourceId=~p, ResourceInstanceId=~p, Value=~p, Acc=~p", [ObjectInstanceId, ResourceId, ResourceInstanceId, Value, Acc]),
+insert_resource_into_object([ObjectInstanceId|OtherIds], Value, Acc) ->
+    ?LOG(debug, "insert_resource_into_object1 ObjectInstanceId=~p, OtherIds=~p, Value=~p, Acc=~p", [ObjectInstanceId, OtherIds, Value, Acc]),
     case find_obj_instance(ObjectInstanceId, Acc) of
         undefined ->
-            NewList = insert_resource_into_object_instance([ResourceId, ResourceInstanceId], Value, []),
+            NewList = insert_resource_into_object_instance(OtherIds, Value, []),
             Acc ++ [#{tlv_object_instance=>ObjectInstanceId, value=>NewList}];
         ObjectInstance = #{value:=List} ->
-            NewList = insert_resource_into_object_instance([ResourceId, ResourceInstanceId], Value, List),
-            Acc2 = lists:delete(ObjectInstance, Acc),
-            Acc2 ++ [ObjectInstance#{value=>NewList}]
-    end;
-insert_resource_into_object([ObjectInstanceId, ResourceId], Value, Acc) ->
-    ?LOG(debug, "insert_resource_into_object1 ObjectInstanceId=~p, ResourceId=~p, Value=~p, Acc=~p", [ObjectInstanceId, ResourceId, Value, Acc]),
-    case find_obj_instance(ObjectInstanceId, Acc) of
-        undefined ->
-            NewList = insert_resource_into_object_instance([ResourceId], Value, []),
-            Acc ++ [#{tlv_object_instance=>ObjectInstanceId, value=>NewList}];
-        ObjectInstance = #{value:=List} ->
-            NewList = insert_resource_into_object_instance([ResourceId], Value, List),
+            NewList = insert_resource_into_object_instance(OtherIds, Value, List),
             Acc2 = lists:delete(ObjectInstance, Acc),
             Acc2 ++ [ObjectInstance#{value=>NewList}]
     end.
@@ -291,25 +279,23 @@ find_obj_instance(_ObjectInstanceId, []) ->
     undefined;
 find_obj_instance(ObjectInstanceId, [H=#{tlv_object_instance:=ObjectInstanceId}|_T]) ->
     H;
-find_obj_instance(ObjectInstanceId, [#{tlv_object_instance:=_OtherId}|T]) ->
+find_obj_instance(ObjectInstanceId, [_|T]) ->
     find_obj_instance(ObjectInstanceId, T).
 
 find_resource(_ResourceId, []) ->
     undefined;
 find_resource(ResourceId, [H=#{tlv_resource_with_value:=ResourceId}|_T]) ->
     H;
-find_resource(ResourceId, [#{tlv_resource_with_value:=_OtherId}|T]) ->
-    find_resource(ResourceId, T);
 find_resource(ResourceId, [H=#{tlv_multiple_resource:=ResourceId}|_T]) ->
     H;
-find_resource(ResourceId, [#{tlv_multiple_resource:=_OtherId}|T]) ->
+find_resource(ResourceId, [_|T]) ->
     find_resource(ResourceId, T).
 
 find_resource_instance(_ResourceInstanceId, []) ->
     undefined;
 find_resource_instance(ResourceInstanceId, [H=#{tlv_resource_instance:=ResourceInstanceId}|_T]) ->
     H;
-find_resource_instance(ResourceInstanceId, [#{tlv_resource_instance:=_OtherId}|T]) ->
+find_resource_instance(ResourceInstanceId, [_|T]) ->
     find_resource_instance(ResourceInstanceId, T).
 
 split_path(Path) ->
