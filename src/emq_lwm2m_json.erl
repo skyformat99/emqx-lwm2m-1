@@ -18,7 +18,7 @@
 
 -author("Feng Lee <feng@emqtt.io>").
 
--export([tlv_to_json/2]).
+-export([tlv_to_json/2, json_to_tlv/1]).
 
 -include("emq_lwm2m.hrl").
 
@@ -136,7 +136,8 @@ value(Value, ResourceId, ObjDefinition) ->
             <<IntResult:Size>> = Value,
             {<<"v">>, integer_to_binary(IntResult)};
         "Float" ->
-            <<FloatResult:32/float>> = Value,
+            Size = byte_size(Value),
+            <<FloatResult:Size/float>> = Value,
             {<<"v">>, float_to_binary(FloatResult)};
         "Boolean" ->
             B = case Value of
@@ -159,4 +160,163 @@ value(Value, ResourceId, ObjDefinition) ->
 encode_json(BaseName, E) ->
     ?LOG(debug, "encode_json BaseName=~p, E=~p", [BaseName, E]),
     jsx:encode(#{bn=>BaseName, e=>E}).
+
+
+
+json_to_tlv(JsonText) ->
+    Json = jsx:decode(JsonText, [return_maps]),
+    BaseName = maps:get(<<"bn">>, Json),
+    E = maps:get(<<"e">>, Json),
+    case split_path(BaseName) of
+        [_ObjectId, ObjectInstanceId, ResourceId] ->
+            case size(E) of
+                1 -> element_single_resource(ResourceId, E);
+                _ -> element_loop_level4(E, [#{tlv_multiple_resource=>ResourceId, value=>[]}])
+            end;
+        [_ObjectId, ObjectInstanceId] ->
+            element_loop_level3(E, [#{tlv_object_instance=>ObjectInstanceId, value=>[]}]);
+        [_ObjectId] ->
+            element_loop_level2(E, [])
+    end.
+
+element_single_resource(ResourceId, [H=#{}]) ->
+    BinaryValue = value_ex(H),
+    [#{tlv_multiple_resource=>ResourceId, value=>BinaryValue}].
+
+element_loop_level2([H=#{<<"n">>:=Name}|T], Acc) ->
+    BinaryValue = value_ex(H),
+    Path = split_path(Name),
+    NewAcc = insert_resource_into_object(Path, BinaryValue, Acc),
+    element_loop_level2(T, NewAcc).
+
+element_loop_level3([H=#{<<"n">>:=Name}|T], Acc) ->
+    BinaryValue = value_ex(H),
+    Path = split_path(Name),
+    NewAcc = insert_resource_into_object_instance(Path, BinaryValue, Acc),
+    element_loop_level3(T, NewAcc).
+
+element_loop_level4([H=#{<<"n">>:=Name}|T], Acc) ->
+    BinaryValue = value_ex(H),
+    Path = split_path(Name),
+    NewAcc = insert_resource_instance_into_resource(Path, BinaryValue, Acc),
+    element_loop_level4(T, NewAcc).
+
+
+value_ex(#{<<"v">>:=Value}) ->
+    case catch binary_to_integer(Value) of
+        {'EXIT',{badarg,_}} -> <<(binary_to_float(Value))/float>>;
+        Int                 -> encode_int(Int)
+    end;
+value_ex(#{<<"sv">>:=Value}) ->
+    Value;
+value_ex(#{<<"t">>:=Value}) ->
+    encode_int(binary_to_integer(Value));
+value_ex(#{<<"bv">>:=Value}) ->
+    case Value of
+        <<"true">>  -> <<1>>;
+        <<"false">> -> <<0>>
+    end;
+value_ex(#{<<"ov">>:=Value}) ->
+    [P1, P2] = binary:split(Value, [<<$:>>], [global]),
+    <<(binary_to_integer(P1)):16, (binary_to_integer(P2)):16>>.
+
+
+insert_resource_into_object([ObjectInstanceId, ResourceId, ResourceInstanceId], Value, Acc) ->
+    case find_obj_instance(ObjectInstanceId, Acc) of
+        undefined ->
+            NewMap = insert_resource_into_object_instance([ResourceId, ResourceInstanceId], Value, #{tlv_object_instance=>ObjectInstanceId, value=>[]}),
+            Acc ++ [NewMap];
+        ObjectInstance ->
+            NewMap = insert_resource_into_object_instance([ResourceId, ResourceInstanceId], Value, ObjectInstance),
+            Acc2 = lists:delete(ObjectInstance, Acc),
+            Acc2 ++ [NewMap]
+    end;
+insert_resource_into_object([ObjectInstanceId, ResourceId], Value, Acc) ->
+    case find_obj_instance(ObjectInstanceId, Acc) of
+        undefined ->
+            NewMap = insert_resource_into_object_instance([ResourceId], Value, #{tlv_object_instance=>ObjectInstanceId, value=>[]}),
+            Acc ++ [NewMap];
+        ObjectInstance ->
+            NewMap = insert_resource_into_object_instance([ResourceId], Value, ObjectInstance),
+            Acc2 = lists:delete(ObjectInstance, Acc),
+            Acc2 ++ [NewMap]
+    end.
+
+insert_resource_into_object_instance([ResourceId, ResourceInstanceId], Value, Acc) ->
+    case find_resource(ResourceId, Acc) of
+        undeinfed ->
+            NewMap = insert_resource_instance_into_resource(ResourceInstanceId, Value, #{tlv_multiple_resource=>ResourceId, value=>[]}),
+            Acc ++ [NewMap];
+        Resource ->
+            NewMap = insert_resource_instance_into_resource(ResourceInstanceId, Value, Resource),
+            Acc2 = lists:delete(Resource, Acc),
+            Acc2 ++ [NewMap]
+    end;
+insert_resource_into_object_instance([ResourceId], Value, Acc) ->
+    NewMap = #{tlv_resource_with_value=>ResourceId, value=>Value},
+    case find_resource(ResourceId, Acc) of
+        undeinfed ->
+            Acc ++ [NewMap];
+        Resource ->
+            Acc2 = lists:delete(Resource, Acc),
+            Acc2 ++ [NewMap]
+    end.
+
+insert_resource_instance_into_resource(ResourceInstanceId, Value, Acc) ->
+    NewMap = #{tlv_resource_instance=>ResourceInstanceId, value=>Value},
+    case find_resource_instance(ResourceInstanceId, Acc) of
+        undeinfed ->
+            Acc ++ [NewMap];
+        Resource ->
+            Acc2 = lists:delete(Resource, Acc),
+            Acc2 ++ [NewMap]
+    end.
+
+
+find_obj_instance(_ObjectInstanceId, []) ->
+    undefined;
+find_obj_instance(ObjectInstanceId, [H=#{tlv_object_instance:=ObjectInstanceId}|_T]) ->
+    H;
+find_obj_instance(ObjectInstanceId, [#{tlv_object_instance:=_OtherId}|T]) ->
+    find_obj_instance(ObjectInstanceId, T).
+
+
+find_resource(_ResourceId, []) ->
+    undefined;
+find_resource(ResourceId, [H=#{tlv_resource_with_value:=ResourceId}|_T]) ->
+    H;
+find_resource(ResourceId, [#{tlv_resource_with_value:=_OtherId}|T]) ->
+    find_obj_instance(ResourceId, T);
+find_resource(ResourceId, [H=#{tlv_multiple_resource:=ResourceId}|_T]) ->
+    H;
+find_resource(ResourceId, [#{tlv_multiple_resource:=_OtherId}|T]) ->
+    find_obj_instance(ResourceId, T).
+
+
+find_resource_instance(_ResourceInstanceId, []) ->
+    undefined;
+find_resource_instance(ResourceInstanceId, [H=#{tlv_resource_instance:=ResourceInstanceId}|_T]) ->
+    H;
+find_resource_instance(ResourceInstanceId, [#{tlv_resource_instance:=_OtherId}|T]) ->
+    find_obj_instance(ResourceInstanceId, T).
+
+split_path(Path) ->
+    List = binary:split(Path, [<<$/>>], [global]),
+    path(List, []).
+
+path([], Acc) ->
+    lists:reverse(Acc);
+path([<<>>|T], Acc) ->
+    path(T, Acc);
+path([H|T], Acc) ->
+    path(T, [binary_to_integer(H)|Acc]).
+
+
+encode_int(Int) ->
+    if
+        Int >= 65536 -> <<Int:24>>;
+        Int >= 256   -> <<Int:16>>;
+        true         -> <<Int:8>>
+    end.
+
 
