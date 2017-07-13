@@ -62,7 +62,7 @@ tlv_level2(_, [], _, Acc) ->
 tlv_level2(RelativePath, [#{tlv_resource_with_value:=ResourceId, value:=Value}|T], ObjDefinition, Acc) ->
     {K, V} = value(Value, ResourceId, ObjDefinition),
     Name = name(RelativePath, ResourceId),
-    New = #{<<"n">> => Name, K => V},
+    New = #{n => Name, K => V},
     tlv_level2(RelativePath, T, ObjDefinition, Acc++[New]);
 tlv_level2(RelativePath, [#{tlv_multiple_resource:=ResourceId, value:=Value}|T], ObjDefinition, Acc) ->
     NewRelativePath = name(RelativePath, ResourceId),
@@ -74,7 +74,7 @@ tlv_level3(_RelativePath, [], _Id, _ObjDefinition, Acc) ->
 tlv_level3(RelativePath, [#{tlv_resource_instance:=InsId, value:=Value}|T], ResourceId, ObjDefinition, Acc) ->
     {K, V} = value(Value, ResourceId, ObjDefinition),
     Name = name(RelativePath, InsId),
-    New = #{<<"n">> => Name, K => V},
+    New = #{n => Name, K => V},
     tlv_level3(RelativePath, T, ResourceId, ObjDefinition, [New|Acc]).
 
 tlv_single_resource(Id, Value, ObjDefinition) ->
@@ -157,4 +157,6 @@ value(Value, ResourceId, ObjDefinition) ->
 
 
 encode_json(BaseName, E) ->
+    ?LOG(debug, "encode_json BaseName=~p, E=~p", [BaseName, E]),
     jsx:encode(#{bn=>BaseName, e=>E}).
+
