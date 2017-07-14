@@ -320,7 +320,7 @@ case10_read(_Config) ->
     PubTopic = list_to_binary("lwm2m/"++Epn++"/response"),
     ReadResult = jsx:encode(#{  ?MQ_COMMAND_ID   => CmdId,
                                 ?MQ_COMMAND      => <<"Read">>,
-                                ?MQ_RESULT       => #{bn=><<"/3/0/0">>, sv=><<"EMQ">>}
+                                ?MQ_RESULT       => #{bn=><<"/3/0/0">>, e=>[#{sv=><<"EMQ">>}]}
                              }),
     ?assertEqual({PubTopic, ReadResult}, test_mqtt_broker:get_published_msg()),
 
@@ -511,7 +511,7 @@ case12_read_resource_opaque(_Config) ->
     ReadResult = jsx:encode(#{  ?MQ_COMMAND_ID          => CmdId,
                                 ?MQ_COMMAND             => <<"Read">>,
                                 ?MQ_RESULT              => #{   bn=><<"/3/0/8">>,
-                                                                sv=>base64:encode(Opaque)
+                                                                e=>[#{sv=>base64:encode(Opaque)}]
                                                             }
                             }),
     ?assertEqual({PubTopic, ReadResult}, test_mqtt_broker:get_published_msg()),
@@ -854,9 +854,7 @@ case40_discover(_Config) ->
     CmdId = 307,
     Command = #{?MQ_COMMAND_ID         => CmdId,
                 ?MQ_COMMAND            => <<"Discover">>,
-                ?MQ_OBJECT_ID          => 3,  % Device,
-                ?MQ_OBJECT_INSTANCE_ID => 0,
-                ?MQ_RESOURCE_ID        => 7   % Power Source Voltage
+                ?MQ_BASENAME           => <<"/3/0/7">>
                 },
     CommandJson = jsx:encode(Command),
     test_mqtt_broker:dispatch(CommandTopic, CommandJson, CommandTopic),
@@ -881,11 +879,8 @@ case40_discover(_Config) ->
 
     PubTopic = list_to_binary("lwm2m/"++Epn++"/response"),
     ReadResult = jsx:encode(#{  ?MQ_COMMAND_ID         => CmdId,
-                                ?MQ_OBJECT_ID          => 3,  % Device
-                                ?MQ_OBJECT_INSTANCE_ID => 0,
-                                ?MQ_RESOURCE_ID        => 7,  % Power Source Voltage
-                                ?MQ_VALUE_TYPE         => <<"text">>,
-                                ?MQ_VALUE              => PayloadDiscover
+                                ?MQ_COMMAND            => <<"Discover">>,
+                                ?MQ_RESULT             => PayloadDiscover
                             }),
     ?assertEqual({PubTopic, ReadResult}, test_mqtt_broker:get_published_msg()),
 
@@ -926,9 +921,7 @@ case50_write_attribute(_Config) ->
     CmdId = 307,
     Command = #{?MQ_COMMAND_ID         => CmdId,
                 ?MQ_COMMAND            => <<"Write-Attributes">>,
-                ?MQ_OBJECT_ID          => 3,  % Device,
-                ?MQ_OBJECT_INSTANCE_ID => 0,
-                ?MQ_RESOURCE_ID        => 10,   % Memory Free
+                ?MQ_BASENAME           => <<"/3/0/10">>,
                 ?MQ_VALUE              => <<"pmax=5&lt=1024">>
                 },
     CommandJson = jsx:encode(Command),
@@ -955,9 +948,7 @@ case50_write_attribute(_Config) ->
 
     PubTopic = list_to_binary("lwm2m/"++Epn++"/response"),
     ReadResult = jsx:encode(#{  ?MQ_COMMAND_ID         => CmdId,
-                                ?MQ_OBJECT_ID          => 3,  % Device
-                                ?MQ_OBJECT_INSTANCE_ID => 0,
-                                ?MQ_RESOURCE_ID        => 10,  % Memory Free
+                                ?MQ_COMMAND            => <<"Write-Attributes">>,
                                 ?MQ_RESULT             => <<"Changed">>
                             }),
     ?assertEqual({PubTopic, ReadResult}, test_mqtt_broker:get_published_msg()),
@@ -1001,9 +992,7 @@ case60_observe(_Config) ->
     CmdId = 307,
     Command = #{?MQ_COMMAND_ID         => CmdId,
                 ?MQ_COMMAND            => <<"Observe">>,
-                ?MQ_OBJECT_ID          => 3,  % Device,
-                ?MQ_OBJECT_INSTANCE_ID => 0,
-                ?MQ_RESOURCE_ID        => 10   % Memory Free
+                ?MQ_BASENAME           => <<"/3/0/10">>
                 },
     CommandJson = jsx:encode(Command),
     test_mqtt_broker:dispatch(CommandTopic, CommandJson, CommandTopic),
@@ -1028,11 +1017,8 @@ case60_observe(_Config) ->
 
     PubTopic = list_to_binary("lwm2m/"++Epn++"/response"),
     ReadResult = jsx:encode(#{  ?MQ_COMMAND_ID         => CmdId,
-                                ?MQ_OBJECT_ID          => 3,  % Device
-                                ?MQ_OBJECT_INSTANCE_ID => 0,
-                                ?MQ_RESOURCE_ID        => 10,  % Memory Free
-                                ?MQ_VALUE_TYPE         => <<"text">>,
-                                ?MQ_VALUE              => <<"2048">>
+                                ?MQ_COMMAND            => <<"Observe">>,
+                                ?MQ_RESULT             => #{bn=><<"/3/0/10">>, e=>[#{v=>2048}]}
                             }),
     ?assertEqual({PubTopic, ReadResult}, test_mqtt_broker:get_published_msg()),
 
@@ -1049,11 +1035,8 @@ case60_observe(_Config) ->
 
     PubTopic = list_to_binary("lwm2m/"++Epn++"/response"),
     ReadResult2 = jsx:encode(#{ ?MQ_COMMAND_ID         => CmdId,
-                                ?MQ_OBJECT_ID          => 3,  % Device
-                                ?MQ_OBJECT_INSTANCE_ID => 0,
-                                ?MQ_RESOURCE_ID        => 10,  % Memory Free
-                                ?MQ_VALUE_TYPE         => <<"text">>,
-                                ?MQ_VALUE              => <<"4096">>
+                                ?MQ_COMMAND            => <<"Observe">>,
+                                ?MQ_RESULT             => #{bn=><<"/3/0/10">>, e=>[#{v=>4096}]}
                             }),
     ?assertEqual({PubTopic, ReadResult2}, test_mqtt_broker:get_published_msg()),
 

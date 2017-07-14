@@ -338,12 +338,36 @@ encode_int(Int) ->
 text_to_json(BaseName, Text) ->
     {ObjectId, ResourceId} = object_resource_id(BaseName),
     ObjDefinition = emq_lwm2m_xml_object:get_obj_def(ObjectId, true),
-    {K, V} = value(Text, ResourceId, ObjDefinition),
-    #{bn=>BaseName, K=>V}.
+    {K, V} = text_value(Text, ResourceId, ObjDefinition),
+    #{bn=>BaseName, e=>[#{K=>V}]}.
 
+
+% text to json
+text_value(Text, ResourceId, ObjDefinition) ->
+    case emq_lwm2m_xml_object:get_resource_type(ResourceId, ObjDefinition) of
+        "String" ->
+            {sv, Text};  % keep binary type since it is same as a string for jsx
+        "Integer" ->
+            {v, binary_to_integer(Text)};
+        "Float" ->
+            {v, binary_to_float(Text)};
+        "Boolean" ->
+            B = case Text of
+                    <<"true">> -> false;
+                    <<"false">> -> true
+                end,
+            {bv, B};
+        "Opaque" ->
+            % keep the base64 string
+            {sv, Text};
+        "Time" ->
+            {v, binary_to_integer(Text)};
+        "Objlnk" ->
+            {ov, Text}
+    end.
 
 opaque_to_json(BaseName, Binary) ->
-    #{bn=>BaseName, sv=>base64:encode(Binary)}.
+    #{bn=>BaseName, e=>[#{sv=>base64:encode(Binary)}]}.
 
 bn_e(#{bn:=BaseName, e:=E}) ->
     {BaseName, E};

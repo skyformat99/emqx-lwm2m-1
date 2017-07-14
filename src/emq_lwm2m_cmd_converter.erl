@@ -51,19 +51,12 @@ mqtt_payload_to_coap_request(InputCmd = #{?MQ_COMMAND := <<"Execute">>, ?MQ_BASE
                     Data      -> Data
                 end,
     {lwm2m_coap_message:request(con, post, Payload, [{uri_path, [Path]}, {content_format, <<"text/plain">>}]), InputCmd};
-mqtt_payload_to_coap_request(InputCmd = #{?MQ_COMMAND := <<"Discover">>}) ->
-    {ObjectId, ObjectInstanceId, ResourceId} = get_oid_rid(InputCmd),
-    Path = build_path({ObjectId, ObjectInstanceId, ResourceId}),
-    {lwm2m_coap_message:request(con, get, <<>>, [{uri_path, Path}, {'accept', ?LWM2M_FORMAT_LINK}]), InputCmd};
-mqtt_payload_to_coap_request(InputCmd = #{?MQ_COMMAND := <<"Write-Attributes">>}) ->
-    {ObjectId, ObjectInstanceId, ResourceId} = get_oid_rid(InputCmd),
-    Path = build_path({ObjectId, ObjectInstanceId, ResourceId}),
-    Query = maps:get(?MQ_VALUE, InputCmd),
-    {lwm2m_coap_message:request(con, put, <<>>, [{uri_path, Path}, {uri_query, [Query]}]), InputCmd};
-mqtt_payload_to_coap_request(InputCmd = #{?MQ_COMMAND := <<"Observe">>}) ->
-    {ObjectId, ObjectInstanceId, ResourceId} = get_oid_rid(InputCmd),
-    Path = build_path({ObjectId, ObjectInstanceId, ResourceId}),
-    {lwm2m_coap_message:request(con, get, <<>>, [{uri_path, Path}, {observe, 0}]), InputCmd}.
+mqtt_payload_to_coap_request(InputCmd = #{?MQ_COMMAND := <<"Discover">>, ?MQ_BASENAME := Path}) ->
+    {lwm2m_coap_message:request(con, get, <<>>, [{uri_path, [Path]}, {'accept', ?LWM2M_FORMAT_LINK}]), InputCmd};
+mqtt_payload_to_coap_request(InputCmd = #{?MQ_COMMAND := <<"Write-Attributes">>, ?MQ_BASENAME := Path, ?MQ_VALUE := Query}) ->
+    {lwm2m_coap_message:request(con, put, <<>>, [{uri_path, [Path]}, {uri_query, [Query]}]), InputCmd};
+mqtt_payload_to_coap_request(InputCmd = #{?MQ_COMMAND := <<"Observe">>, ?MQ_BASENAME := Path}) ->
+    {lwm2m_coap_message:request(con, get, <<>>, [{uri_path, [Path]}, {observe, 0}]), InputCmd}.
 
 
 coap_response_to_mqtt_payload(Method, CoapPayload, Format, Ref=#{?MQ_COMMAND := <<"Read">>}) ->
@@ -93,6 +86,7 @@ coap_read_response_to_mqtt_payload({ok, content}, CoapPayload, Format, Ref) ->
 
 coap_read_response_to_mqtt_payload2(CoapPayload, <<"text/plain">>, Ref=#{?MQ_BASENAME:=BaseName}) ->
     Result = emq_lwm2m_json:text_to_json(BaseName, CoapPayload),
+    ?LOG(debug, "coap_read_response_to_mqtt_payload2 text CoapPayload=~p, Result=~p", [CoapPayload, Result]),
     make_read_response(Ref, Result);
 coap_read_response_to_mqtt_payload2(CoapPayload, <<"application/octet-stream">>, Ref=#{?MQ_BASENAME:=BaseName}) ->
     Result = emq_lwm2m_json:opaque_to_json(BaseName, CoapPayload),
