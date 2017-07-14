@@ -30,17 +30,20 @@
 
 mqtt_payload_to_coap_request(InputCmd = #{?MQ_COMMAND := <<"Read">>, ?MQ_BASENAME := Path}) ->
     {lwm2m_coap_message:request(con, get, <<>>, [{uri_path, [Path]}]), InputCmd};
-mqtt_payload_to_coap_request(InputCmd = #{?MQ_COMMAND := <<"Write">>}) ->
-    {ObjectId, ObjectInstanceId, ResourceId} = get_oid_rid(InputCmd),
-    Path = build_path({ObjectId, ObjectInstanceId, ResourceId}),
-    Method = case ResourceId of
-                 undefined -> post;
-                 _         -> put
-             end,
-    case ResourceId of
-        undefined -> process_write_object_command(Method, Path, InputCmd);
-        _Other    -> process_write_resource_command(Method, Path, InputCmd)
-    end;
+mqtt_payload_to_coap_request(InputCmd = #{?MQ_COMMAND := <<"Write">>, ?MQ_VALUE := Value}) ->
+    #{<<"bn">>:=Path} = Value,
+    Method =    case binary:split(Path, [<<$/>>], [global]) of
+                    [<<>>, _ObjId, _ObjInsId, _ResId, <<>>] -> put;
+                    [<<>>, _ObjId, _ObjInsId, _ResId]       -> put;
+                    [<<>>, _ObjId, _ObjInsId, <<>>]         -> post;
+                    [<<>>, _ObjId, _ObjInsId]               -> post;
+                    [<<>>, _ObjId, <<>>]                    -> post;
+                    [<<>>, _ObjId]                          -> post
+                end,
+    ?LOG(debug, "mqtt_payload_to_coap_request write ~p", [Value]),
+    Payload = emq_lwm2m_json:json_to_tlv(Value),
+    CoapRequest = lwm2m_coap_message:request(con, Method, Payload, [{uri_path, [Path]}, {content_format, <<"application/vnd.oma.lwm2m+tlv">>}]),
+    {CoapRequest, InputCmd};
 mqtt_payload_to_coap_request(InputCmd = #{?MQ_COMMAND := <<"Execute">>}) ->
     {ObjectId, ObjectInstanceId, ResourceId} = get_oid_rid(InputCmd),
     Path = build_path({ObjectId, ObjectInstanceId, ResourceId}),
@@ -79,10 +82,6 @@ coap_response_to_mqtt_payload(Method, CoapPayload, Format, Ref=#{?MQ_COMMAND := 
     ?LOG(debug, "coap_response_to_mqtt_payload observe Method=~p, CoapPayload=~p, Format=~p, Ref=~p", [Method, CoapPayload, Format, Ref]),
     coap_observe_response_to_mqtt_payload(Method, CoapPayload, Format, Ref).
 
-
-
-
-
 coap_read_response_to_mqtt_payload({error, Error}, _CoapPayload, _Format, Ref) ->
     make_read_error(Ref, error_code(Error));
 coap_read_response_to_mqtt_payload({ok, content}, CoapPayload, Format, Ref) ->
@@ -98,7 +97,6 @@ coap_read_response_to_mqtt_payload2(CoapPayload, <<"application/octet-stream">>,
 coap_read_response_to_mqtt_payload2(CoapPayload, <<"application/vnd.oma.lwm2m+tlv">>, Ref=#{?MQ_BASENAME:=BaseName}) ->
     Decode = emq_lwm2m_tlv:parse(CoapPayload),
     Result = emq_lwm2m_json:tlv_to_json(BaseName, Decode),
-    ?LOG(debug, "coap_read_resource_response_to_mqtt_payload tlv ~p", [Result]),
     make_read_response(Ref, Result);
 coap_read_response_to_mqtt_payload2(CoapPayload, <<"application/vnd.oma.lwm2m+json">>, Ref) ->
     Result = jsx:decode(CoapPayload),
@@ -204,19 +202,6 @@ make_write_resource_error(Ref=#{}, Error) ->
                 }).
 
 
-
-process_write_object_command(Method, Path, InputCmd) ->
-    ?LOG(debug, "process_write_object_command Method=~p, Path=~p, InputCmd=~p", [Method, Path, InputCmd]),
-    error("not support now").
-
-
-process_write_resource_command(Method, Path, InputCmd=#{?MQ_VALUE_TYPE := Type, ?MQ_VALUE := Value}) ->
-    {Format, Payload} = case Type of
-                            <<"text">>   -> {<<"text/plain">>, to_binary(Value)};
-                            <<"binary">> -> {<<"application/octet-stream">>, to_binary(Value)};
-                            <<"json">>   -> error("not support now")
-                        end,
-    {lwm2m_coap_message:request(con, Method, Payload, [{uri_path, Path}, {content_format, Format}]), InputCmd}.
 
 
 error_code(not_acceptable) ->

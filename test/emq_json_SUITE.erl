@@ -46,7 +46,7 @@ case01(_Config) ->
         #{tlv_resource_with_value => 16#00, value => <<"Open Mobile Alliance">>}
     ],
     R = emq_lwm2m_json:tlv_to_json(<<"/3/0/0">>, Input),
-    Exp = jsx:encode(#{bn=><<"/3/0/0">>,e=>[#{sv=><<"Open Mobile Alliance">>}]}),
+    Exp = #{bn=><<"/3/0/0">>,e=>[#{sv=><<"Open Mobile Alliance">>}]},
     ?assertEqual(Exp, R),
     EncodedTerm = emq_lwm2m_json:json_to_tlv(Exp),
     ?assertEqual(Input, EncodedTerm),
@@ -62,12 +62,12 @@ case02(_Config) ->
                 #{tlv_resource_with_value => 16#02, value => <<"345000123">>}
             ],
     R = emq_lwm2m_json:tlv_to_json(<<"/3/0">>, Input),
-    Exp = jsx:encode(   #{  bn=><<"/3/0">>,
-                            e=> [
-                                    #{n=><<"0">>, sv=><<"Open Mobile Alliance">>},
-                                    #{n=><<"1">>, sv=><<"Lightweight M2M Client">>},
-                                    #{n=><<"2">>, sv=><<"345000123">>}
-                                ]}),
+    Exp = #{    bn=><<"/3/0">>,
+                e=> [
+                        #{n=><<"0">>, sv=><<"Open Mobile Alliance">>},
+                        #{n=><<"1">>, sv=><<"Lightweight M2M Client">>},
+                        #{n=><<"2">>, sv=><<"345000123">>}
+                    ]},
     ?assertEqual(Exp, R),
     EncodedTerm = emq_lwm2m_json:json_to_tlv(Exp),
     ?assertEqual(Input, EncodedTerm),
@@ -87,11 +87,11 @@ case03(_Config) ->
                 }
             ],
     R = emq_lwm2m_json:tlv_to_json(<<"/3/0/7">>, Input),
-    Exp = jsx:encode(   #{  bn=><<"/3/0">>,
-                            e=> [
-                                #{n=><<"7/0">>, v=><<"3800">>},
-                                #{n=><<"7/1">>, v=><<"5000">>}
-                            ]}),
+    Exp =   #{  bn=><<"/3/0">>,
+                e=> [
+                    #{n=><<"7/0">>, v=>3800},
+                    #{n=><<"7/1">>, v=>5000}
+                ]},
     ?assertEqual(Exp, R),
     EncodedTerm = emq_lwm2m_json:json_to_tlv(Exp),
     ?assertEqual(Input, EncodedTerm),
@@ -118,13 +118,13 @@ case04_two_multiple_resource(_Config) ->
         }
     ],
     R = emq_lwm2m_json:tlv_to_json(<<"/3/0">>, Input),
-    Exp = jsx:encode(   #{  bn=><<"/3/0">>,
-                            e=> [
-                                    #{n=><<"7/0">>, v=><<"3800">>},
-                                    #{n=><<"7/1">>, v=><<"5000">>},
-                                    #{n=><<"10/0">>, v=><<"257">>},
-                                    #{n=><<"10/1">>, v=><<"514">>}
-                            ]}),
+    Exp =   #{  bn=><<"/3/0">>,
+                e=> [
+                        #{n=><<"7/0">>, v=>3800},
+                        #{n=><<"7/1">>, v=>5000},
+                        #{n=><<"10/0">>, v=>257},
+                        #{n=><<"10/1">>, v=>514}
+                ]},
     ?assertEqual(Exp, R),
     EncodedTerm = emq_lwm2m_json:json_to_tlv(Exp),
     ?assertEqual(Input, EncodedTerm),
@@ -160,14 +160,13 @@ case05_two_multiple_resource_three_resource_with_value(_Config) ->
                     #{n=><<"0">>, sv=><<"Open Mobile Alliance">>},
                     #{n=><<"1">>, sv=><<"Lightweight M2M Client">>},
                     #{n=><<"2">>, sv=><<"345000123">>},
-                    #{n=><<"7/0">>, v=><<"3800">>},
-                    #{n=><<"7/1">>, v=><<"5000">>},
-                    #{n=><<"10/0">>, v=><<"257">>},
-                    #{n=><<"10/1">>, v=><<"514">>}
+                    #{n=><<"7/0">>, v=>3800},
+                    #{n=><<"7/1">>, v=>5000},
+                    #{n=><<"10/0">>, v=>257},
+                    #{n=><<"10/1">>, v=>514}
                 ]},
-    Exp = jsx:encode(Exp0),
-    ?assertEqual(Exp, R),
-    EncodedTerm = emq_lwm2m_json:json_to_tlv(Exp),
+    ?assertEqual(Exp0, R),
+    EncodedTerm = emq_lwm2m_json:json_to_tlv(Exp0),
     ?assertEqual(Input, EncodedTerm),
     emq_lwm2m_xml_object_db:stop().
 
@@ -201,14 +200,13 @@ case06_one_object_instance(_Config) ->
                         #{n=><<"0">>, sv=><<"Open Mobile Alliance">>},
                         #{n=><<"1">>, sv=><<"Lightweight M2M Client">>},
                         #{n=><<"2">>, sv=><<"345000123">>},
-                        #{n=><<"7/0">>, v=><<"3800">>},
-                        #{n=><<"7/1">>, v=><<"5000">>},
-                        #{n=><<"10/0">>, v=><<"257">>},
-                        #{n=><<"10/1">>, v=><<"514">>}
+                        #{n=><<"7/0">>, v=>3800},
+                        #{n=><<"7/1">>, v=>5000},
+                        #{n=><<"10/0">>, v=>257},
+                        #{n=><<"10/1">>, v=>514}
                 ]},
-    Exp = jsx:encode(Exp0),
-    ?assertEqual(Exp, R),
-    EncodedTerm = emq_lwm2m_json:json_to_tlv(Exp),
+    ?assertEqual(Exp0, R),
+    EncodedTerm = emq_lwm2m_json:json_to_tlv(Exp0),
     ?assertEqual(Input, EncodedTerm),
     emq_lwm2m_xml_object_db:stop().
 
@@ -257,17 +255,16 @@ case07_two_object_instance(_Config) ->
                         #{n=><<"0/0">>, sv=><<"Open Mobile Alliance">>},
                         #{n=><<"0/1">>, sv=><<"Lightweight M2M Client">>},
                         #{n=><<"0/2">>, sv=><<"345000123">>},
-                        #{n=><<"0/7/0">>, v=><<"3800">>},
-                        #{n=><<"0/7/1">>, v=><<"5000">>},
-                        #{n=><<"0/10/0">>, v=><<"257">>},
-                        #{n=><<"0/10/1">>, v=><<"514">>},
+                        #{n=><<"0/7/0">>, v=>3800},
+                        #{n=><<"0/7/1">>, v=>5000},
+                        #{n=><<"0/10/0">>, v=>257},
+                        #{n=><<"0/10/1">>, v=>514},
                         #{n=><<"1/0">>, sv=><<"AAA">>},
                         #{n=><<"1/1">>, sv=><<"BBB">>},
                         #{n=><<"1/2">>, sv=><<"CCC">>}
                 ]},
-    Exp = jsx:encode(Exp0),
-    ?assertEqual(Exp, R),
-    EncodedTerm = emq_lwm2m_json:json_to_tlv(Exp),
+    ?assertEqual(Exp0, R),
+    EncodedTerm = emq_lwm2m_json:json_to_tlv(Exp0),
     ?assertEqual(Input, EncodedTerm),
     emq_lwm2m_xml_object_db:stop().
 

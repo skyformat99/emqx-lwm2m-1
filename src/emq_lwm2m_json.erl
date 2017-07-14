@@ -131,34 +131,34 @@ object_resource_id(BaseName) ->
         [<<>>, ObjIdBin3, _, ResourceId3] -> {binary_to_integer(ObjIdBin3), binary_to_integer(ResourceId3)}
     end.
 
-
+% TLV binary to json text
 value(Value, ResourceId, ObjDefinition) ->
     case emq_lwm2m_xml_object:get_resource_type(ResourceId, ObjDefinition) of
         "String" ->
-            {<<"sv">>, Value};  % keep binary type since it is same as a string for jsx
+            {sv, Value};  % keep binary type since it is same as a string for jsx
         "Integer" ->
             Size = byte_size(Value)*8,
             <<IntResult:Size>> = Value,
-            {<<"v">>, integer_to_binary(IntResult)};
+            {v, IntResult};
         "Float" ->
             Size = byte_size(Value),
             <<FloatResult:Size/float>> = Value,
-            {<<"v">>, float_to_binary(FloatResult)};
+            {v, FloatResult};
         "Boolean" ->
             B = case Value of
                     <<0>> -> false;
                     <<1>> -> true
                 end,
-            {<<"bv">>, B};
+            {bv, B};
         "Opaque" ->
-            {<<"sv">>, base64:encode(Value)};
+            {sv, base64:decode(Value)};
         "Time" ->
             Size = byte_size(Value)*8,
             <<IntResult:Size>> = Value,
-            {<<"v">>, integer_to_binary(IntResult)};
+            {v, IntResult};
         "Objlnk" ->
             <<ObjId:16, ObjInsId:16>> = Value,
-            {<<"ov">>, io_lib:format("~b:~b", [ObjId, ObjInsId])}
+            {ov, list_to_binary(io_lib:format("~b:~b", [ObjId, ObjInsId]))}
     end.
 
 
@@ -166,12 +166,9 @@ encode_json(BaseName, E) ->
     ?LOG(debug, "encode_json BaseName=~p, E=~p", [BaseName, E]),
     #{bn=>BaseName, e=>E}.
 
-
-
-json_to_tlv(JsonText) ->
-    Json = jsx:decode(JsonText, [return_maps]),
-    BaseName = maps:get(<<"bn">>, Json),
-    E = maps:get(<<"e">>, Json),
+json_to_tlv(Json=#{}) ->
+    BaseName = maps:get(bn, Json),
+    E = maps:get(e, Json),
     case split_path(BaseName) of
         [_ObjectId, _ObjectInstanceId, ResourceId] ->
             case length(E) of
@@ -182,7 +179,11 @@ json_to_tlv(JsonText) ->
             element_loop_level3(E, []);
         [_ObjectId] ->
             element_loop_level2(E, [])
-    end.
+    end;
+json_to_tlv(JsonBinary) ->
+    Json = jsx:decode(JsonBinary, [return_maps]),
+    json_to_tlv(Json).
+
 
 element_single_resource(ResourceId, [H=#{}]) ->
     BinaryValue = value_ex(H),
@@ -190,7 +191,7 @@ element_single_resource(ResourceId, [H=#{}]) ->
 
 element_loop_level2([], Acc) ->
     Acc;
-element_loop_level2([H=#{<<"n">>:=Name}|T], Acc) ->
+element_loop_level2([H=#{n:=Name}|T], Acc) ->
     BinaryValue = value_ex(H),
     Path = split_path(Name),
     ?LOG(debug, "element_loop_level2 T=~p, Acc=~p", [T, Acc]),
@@ -200,7 +201,7 @@ element_loop_level2([H=#{<<"n">>:=Name}|T], Acc) ->
 
 element_loop_level3([], Acc) ->
     Acc;
-element_loop_level3([H=#{<<"n">>:=Name}|T], Acc) ->
+element_loop_level3([H=#{n:=Name}|T], Acc) ->
     ?LOG(debug, "element_loop_level3 H=~p, T=~p, Acc=~p", [H, T, Acc]),
     BinaryValue = value_ex(H),
     Path = split_path(Name),
@@ -216,21 +217,19 @@ element_loop_level4([H=#{<<"n">>:=Name}|T], Acc) ->
     element_loop_level4(T, NewAcc).
 
 
-value_ex(#{<<"v">>:=Value}) ->
-    case catch binary_to_integer(Value) of
-        {'EXIT',{badarg,_}} -> <<(binary_to_float(Value))/float>>;
-        Int                 -> encode_int(Int)
-    end;
-value_ex(#{<<"sv">>:=Value}) ->
+% json text to TLV binary
+value_ex(#{v:=Value}) ->
+    encode_number(Value);
+value_ex(#{sv:=Value}) ->
     Value;
-value_ex(#{<<"t">>:=Value}) ->
-    encode_int(binary_to_integer(Value));
-value_ex(#{<<"bv">>:=Value}) ->
+value_ex(#{t:=Value}) ->
+    encode_number(Value);
+value_ex(#{bv:=Value}) ->
     case Value of
         <<"true">>  -> <<1>>;
         <<"false">> -> <<0>>
     end;
-value_ex(#{<<"ov">>:=Value}) ->
+value_ex(#{ov:=Value}) ->
     [P1, P2] = binary:split(Value, [<<$:>>], [global]),
     <<(binary_to_integer(P1)):16, (binary_to_integer(P2)):16>>.
 
@@ -314,6 +313,12 @@ path([<<>>|T], Acc) ->
 path([H|T], Acc) ->
     path(T, [binary_to_integer(H)|Acc]).
 
+
+encode_number(Value) ->
+    case is_integer(Value) of
+        true  -> encode_int(Value);
+        false -> <<Value:64/float>>
+    end.
 
 encode_int(Int) ->
     if
