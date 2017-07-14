@@ -26,6 +26,7 @@
 -define(MQ_OBJECT_ID,          <<"ObjectID">>).
 -define(MQ_OBJECT_INSTANCE_ID, <<"ObjectInstanceID">>).
 -define(MQ_RESOURCE_ID,        <<"ResourceID">>).
+-define(MQ_BASENAME,           <<"BaseName">>).
 
 -define(MQ_VALUE_TYPE,         <<"ValueType">>).
 -define(MQ_VALUE,              <<"Value">>).

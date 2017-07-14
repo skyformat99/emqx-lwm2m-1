@@ -18,13 +18,11 @@
 
 -author("Feng Lee <feng@emqtt.io>").
 
--export([tlv_to_json/2, json_to_tlv/1]).
+-export([tlv_to_json/2, json_to_tlv/1, text_to_json/2, opaque_to_json/2]).
 
 -include("emq_lwm2m.hrl").
 
-%-define(LOG(Level, Format, Args), lager:Level("LWM2M-JSON: " ++ Format, Args)).
--define(LOG(Level, Format, Args), io:format("LWM2M-JSON: " ++ Format, Args)).
-
+-define(LOG(Level, Format, Args), lager:Level("LWM2M-JSON: " ++ Format, Args)).
 
 
 
@@ -126,6 +124,13 @@ object_id(BaseName) ->
         [<<>>, ObjIdBin3, _, _] -> binary_to_integer(ObjIdBin3)
     end.
 
+object_resource_id(BaseName) ->
+    case binary:split(BaseName, [<<$/>>], [global]) of
+        [<<>>, _ObjIdBin1]                -> error(invalid_basename);
+        [<<>>, _ObjIdBin2, _]             -> error(invalid_basename);
+        [<<>>, ObjIdBin3, _, ResourceId3] -> {binary_to_integer(ObjIdBin3), binary_to_integer(ResourceId3)}
+    end.
+
 
 value(Value, ResourceId, ObjDefinition) ->
     case emq_lwm2m_xml_object:get_resource_type(ResourceId, ObjDefinition) of
@@ -159,7 +164,7 @@ value(Value, ResourceId, ObjDefinition) ->
 
 encode_json(BaseName, E) ->
     ?LOG(debug, "encode_json BaseName=~p, E=~p", [BaseName, E]),
-    jsx:encode(#{bn=>BaseName, e=>E}).
+    #{bn=>BaseName, e=>E}.
 
 
 
@@ -316,5 +321,17 @@ encode_int(Int) ->
         Int >= 256   -> <<Int:16>>;
         true         -> <<Int:8>>
     end.
+
+
+
+text_to_json(BaseName, Text) ->
+    {ObjectId, ResourceId} = object_resource_id(BaseName),
+    ObjDefinition = emq_lwm2m_xml_object:get_obj_def(ObjectId, true),
+    {K, V} = value(Text, ResourceId, ObjDefinition),
+    #{bn=>BaseName, K=>V}.
+
+
+opaque_to_json(BaseName, Binary) ->
+    #{bn=>BaseName, sv=>base64:encode(Binary)}.
 
 
