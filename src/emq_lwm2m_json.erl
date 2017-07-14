@@ -167,8 +167,7 @@ encode_json(BaseName, E) ->
     #{bn=>BaseName, e=>E}.
 
 json_to_tlv(Json=#{}) ->
-    BaseName = maps:get(bn, Json),
-    E = maps:get(e, Json),
+    {BaseName, E} = bn_e(Json),
     case split_path(BaseName) of
         [_ObjectId, _ObjectInstanceId, ResourceId] ->
             case length(E) of
@@ -186,50 +185,57 @@ json_to_tlv(JsonBinary) ->
 
 
 element_single_resource(ResourceId, [H=#{}]) ->
-    BinaryValue = value_ex(H),
+    [{Key, Value}] = maps:to_list(H),
+    BinaryValue = value_ex(Key, Value),
     [#{tlv_resource_with_value=>ResourceId, value=>BinaryValue}].
 
 element_loop_level2([], Acc) ->
     Acc;
-element_loop_level2([H=#{n:=Name}|T], Acc) ->
-    BinaryValue = value_ex(H),
-    Path = split_path(Name),
-    ?LOG(debug, "element_loop_level2 T=~p, Acc=~p", [T, Acc]),
-    NewAcc = insert_resource_into_object(Path, BinaryValue, Acc),
-    ?LOG(debug, "element_loop_level2 NewAcc=~p", [NewAcc]),
+element_loop_level2([H|T], Acc) ->
+    NewAcc = insert(object, H, Acc),
     element_loop_level2(T, NewAcc).
 
 element_loop_level3([], Acc) ->
     Acc;
-element_loop_level3([H=#{n:=Name}|T], Acc) ->
-    ?LOG(debug, "element_loop_level3 H=~p, T=~p, Acc=~p", [H, T, Acc]),
-    BinaryValue = value_ex(H),
-    Path = split_path(Name),
-    NewAcc = insert_resource_into_object_instance(Path, BinaryValue, Acc),
+element_loop_level3([H|T], Acc) ->
+    NewAcc = insert(object_instance, H, Acc),
     element_loop_level3(T, NewAcc).
 
 element_loop_level4([], Acc) ->
     Acc;
-element_loop_level4([H=#{<<"n">>:=Name}|T], Acc) ->
-    BinaryValue = value_ex(H),
-    Path = split_path(Name),
-    NewAcc = insert_resource_instance_into_resource(Path, BinaryValue, Acc),
+element_loop_level4([H|T], Acc) ->
+    NewAcc = insert(resource, H, Acc),
     element_loop_level4(T, NewAcc).
+
+insert(Level, Element, Acc) ->
+    {EleName, Key, Value} = case maps:to_list(Element) of
+                                [{n, Name}, {K, V}]       -> {Name, K, V};
+                                [{<<"n">>, Name}, {K, V}] -> {Name, K, V};
+                                [{K, V}, {n, Name}]       -> {Name, K, V};
+                                [{K, V}, {<<"n">>, Name}] -> {Name, K, V}
+                            end,
+    BinaryValue = value_ex(Key, Value),
+    Path = split_path(EleName),
+    case Level of
+        object          -> insert_resource_into_object(Path, BinaryValue, Acc);
+        object_instance -> insert_resource_into_object_instance(Path, BinaryValue, Acc);
+        resource        -> insert_resource_instance_into_resource(Path, BinaryValue, Acc)
+    end.
 
 
 % json text to TLV binary
-value_ex(#{v:=Value}) ->
+value_ex(K, Value) when K =:= <<"v">>; K =:= v ->
     encode_number(Value);
-value_ex(#{sv:=Value}) ->
+value_ex(K, Value) when K =:= <<"sv">>; K =:= sv ->
     Value;
-value_ex(#{t:=Value}) ->
+value_ex(K, Value) when K =:= <<"t">>; K =:= t ->
     encode_number(Value);
-value_ex(#{bv:=Value}) ->
+value_ex(K, Value) when K =:= <<"bv">>; K =:= bv ->
     case Value of
         <<"true">>  -> <<1>>;
         <<"false">> -> <<0>>
     end;
-value_ex(#{ov:=Value}) ->
+value_ex(K, Value) when K =:= <<"ov">>; K =:= ov ->
     [P1, P2] = binary:split(Value, [<<$:>>], [global]),
     <<(binary_to_integer(P1)):16, (binary_to_integer(P2)):16>>.
 
@@ -338,5 +344,10 @@ text_to_json(BaseName, Text) ->
 
 opaque_to_json(BaseName, Binary) ->
     #{bn=>BaseName, sv=>base64:encode(Binary)}.
+
+bn_e(#{bn:=BaseName, e:=E}) ->
+    {BaseName, E};
+bn_e(#{<<"bn">>:=BaseName, <<"e">>:=E}) ->
+    {BaseName, E}.
 
 

@@ -97,8 +97,8 @@ id_length_bit_width(0) -> 8;
 id_length_bit_width(1) -> 16.
 
 
-encode(Dict) ->
-    encode(Dict, <<>>).
+encode(TlvList) ->
+    encode(TlvList, <<>>).
 
 encode([], Acc) ->
     Acc;

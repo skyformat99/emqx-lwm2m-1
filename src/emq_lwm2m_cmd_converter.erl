@@ -41,7 +41,8 @@ mqtt_payload_to_coap_request(InputCmd = #{?MQ_COMMAND := <<"Write">>, ?MQ_VALUE 
                     [<<>>, _ObjId]                          -> post
                 end,
     ?LOG(debug, "mqtt_payload_to_coap_request write ~p", [Value]),
-    Payload = emq_lwm2m_json:json_to_tlv(Value),
+    TlvData = emq_lwm2m_json:json_to_tlv(Value),
+    Payload = emq_lwm2m_tlv:encode(TlvData),
     CoapRequest = lwm2m_coap_message:request(con, Method, Payload, [{uri_path, [Path]}, {content_format, <<"application/vnd.oma.lwm2m+tlv">>}]),
     {CoapRequest, InputCmd};
 mqtt_payload_to_coap_request(InputCmd = #{?MQ_COMMAND := <<"Execute">>}) ->
@@ -172,9 +173,7 @@ make_read_response(Ref=#{}, Value) ->
 make_read_error(Ref=#{}, Error) ->
     jsx:encode(#{
                     ?MQ_COMMAND_ID          => maps:get(?MQ_COMMAND_ID, Ref),
-                    ?MQ_OBJECT_ID           => maps:get(?MQ_OBJECT_ID, Ref),
-                    ?MQ_OBJECT_INSTANCE_ID  => maps:get(?MQ_OBJECT_INSTANCE_ID, Ref),
-                    ?MQ_RESOURCE_ID         => maps:get(?MQ_RESOURCE_ID, Ref),
+                    ?MQ_COMMAND             => maps:get(?MQ_COMMAND, Ref),
                     ?MQ_VALUE               => Error
                 }).
 
@@ -185,9 +184,7 @@ make_write_resource_response(Ref=#{}, Result) ->
     ?LOG(debug, "make_write_resource_response Ref=~p, Result=~p", [Ref, Result]),
     jsx:encode(#{
                     ?MQ_COMMAND_ID          => maps:get(?MQ_COMMAND_ID, Ref),
-                    ?MQ_OBJECT_ID           => maps:get(?MQ_OBJECT_ID, Ref),
-                    ?MQ_OBJECT_INSTANCE_ID  => maps:get(?MQ_OBJECT_INSTANCE_ID, Ref),
-                    ?MQ_RESOURCE_ID         => maps:get(?MQ_RESOURCE_ID, Ref),
+                    ?MQ_COMMAND             => maps:get(?MQ_COMMAND, Ref),
                     ?MQ_RESULT              => Result
                 }).
 
@@ -195,9 +192,7 @@ make_write_resource_error(Ref=#{}, Error) ->
     ?LOG(debug, "make_write_resource_error Ref=~p, Error=~p", [Ref, Error]),
     jsx:encode(#{
                     ?MQ_COMMAND_ID          => maps:get(?MQ_COMMAND_ID, Ref),
-                    ?MQ_OBJECT_ID           => maps:get(?MQ_OBJECT_ID, Ref),
-                    ?MQ_OBJECT_INSTANCE_ID  => maps:get(?MQ_OBJECT_INSTANCE_ID, Ref),
-                    ?MQ_RESOURCE_ID         => maps:get(?MQ_RESOURCE_ID, Ref),
+                    ?MQ_COMMAND             => maps:get(?MQ_COMMAND, Ref),
                     ?MQ_ERROR               => Error
                 }).
 
