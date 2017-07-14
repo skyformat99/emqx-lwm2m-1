@@ -14,7 +14,7 @@
 %% limitations under the License.
 %%--------------------------------------------------------------------
 
--module(emq_lwm2m_cmd_converter).
+-module(emq_lwm2m_cmd_handler).
 
 -author("Feng Lee <feng@emqtt.io>").
 

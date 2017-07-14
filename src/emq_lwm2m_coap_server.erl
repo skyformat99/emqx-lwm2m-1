@@ -43,7 +43,7 @@ start(Port) ->
             ?LOG(error, "certfile ~p or keyfile ~p are not valid, turn off coap DTLS", [CertFile, KeyFile])
     end,
 
-    lwm2m_coap_server_registry:add_handler([<<"rd">>], emq_lwm2m_resource, undefined).
+    lwm2m_coap_server_registry:add_handler([<<"rd">>], emq_lwm2m_coap_resource, undefined).
 
 
 stop() ->

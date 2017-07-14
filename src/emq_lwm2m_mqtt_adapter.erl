@@ -95,7 +95,7 @@ init({CoapPid, ClientId, ChId, KeepAliveInterval}) ->
     end.
 
 handle_call({publish, Method, CoapResponse, DataFormat, Ref}, _From, State=#state{proto = Proto, rsp_topic = Topic}) ->
-    Message = emq_lwm2m_cmd_converter:coap_response_to_mqtt_payload(Method, CoapResponse, DataFormat, Ref),
+    Message = emq_lwm2m_cmd_handler:coap_response_to_mqtt_payload(Method, CoapResponse, DataFormat, Ref),
     NewProto = ?PROTO_PUBLISH(Topic, Message, Proto),
     {reply, ok, State#state{proto = NewProto}};
 
@@ -276,7 +276,7 @@ proto_deliver_ack(#mqtt_message{qos = ?QOS2, pktid = PacketId}, Proto) ->
 deliver_to_coap(JsonData, CoapPid) ->
     ?LOG(debug, "deliver_to_coap CoapPid=~p (alive=~p), JsonData=~p", [CoapPid, is_process_alive(CoapPid), JsonData]),
     Command = jsx:decode(JsonData, [return_maps]),
-    {CoapRequest, Ref} = emq_lwm2m_cmd_converter:mqtt_payload_to_coap_request(Command),
+    {CoapRequest, Ref} = emq_lwm2m_cmd_handler:mqtt_payload_to_coap_request(Command),
     CoapPid ! {dispatch_command, CoapRequest, Ref}.
 
 

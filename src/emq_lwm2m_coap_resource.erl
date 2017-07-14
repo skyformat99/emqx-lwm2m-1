@@ -14,7 +14,7 @@
 %% limitations under the License.
 %%--------------------------------------------------------------------
 
--module(emq_lwm2m_resource).
+-module(emq_lwm2m_coap_resource).
 
 -author("Feng Lee <feng@emqtt.io>").
 
