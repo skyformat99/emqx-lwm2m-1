@@ -31,7 +31,7 @@ all() -> [case01_register, case02_update_deregister, case03_register_wrong_versi
     case04_register_and_lifetime_timeout, case05_register_wrong_epn, case06_register_wrong_lifetime,
     case10_read, case11_read_object_tlv, case11_read_object_json, case12_read_resource_opaque,
     case20_write, case21_write_object, case22_write_error,
-    case30_execute,
+    case30_execute, case31_execute_error,
     case40_discover,
     case50_write_attribute,
     case60_observe].
@@ -734,9 +734,8 @@ case30_execute(_Config) ->
     CmdId = 307,
     Command = #{?MQ_COMMAND_ID         => CmdId,
                 ?MQ_COMMAND            => <<"Execute">>,
-                ?MQ_OBJECT_ID          => 3,  % Device,
-                ?MQ_OBJECT_INSTANCE_ID => 0,
-                ?MQ_RESOURCE_ID        => 4   % Reboot
+                ?MQ_BASENAME           => <<"/3/0/4">>,   % Device, Reboot
+                ?MQ_ARGS               => <<"2,7">>
                 },
     CommandJson = jsx:encode(Command),
     test_mqtt_broker:dispatch(CommandTopic, CommandJson, CommandTopic),
@@ -746,7 +745,7 @@ case30_execute(_Config) ->
     Path2 = get_coap_path(Options2),
     ?assertEqual(post, Method2),
     ?assertEqual(<<"/3/0/4">>, Path2),
-    ?assertEqual(<<>>, Payload2),
+    ?assertEqual(<<"2,7">>, Payload2),
     timer:sleep(50),
 
     test_send_coap_response(UdpSock, "127.0.0.1", ?PORT, {ok, changed}, #coap_content{}, Request2, false),
@@ -754,11 +753,9 @@ case30_execute(_Config) ->
 
     PubTopic = list_to_binary("lwm2m/"++Epn++"/response"),
     ReadResult = jsx:encode(#{  ?MQ_COMMAND_ID         => CmdId,
-        ?MQ_OBJECT_ID          => 3,  % Device
-        ?MQ_OBJECT_INSTANCE_ID => 0,
-        ?MQ_RESOURCE_ID        => 4,  % Reboot
-        ?MQ_RESULT             => <<"Changed">>
-    }),
+                                ?MQ_COMMAND            => <<"Execute">>,
+                                ?MQ_RESULT             => <<"Changed">>
+                            }),
     ?assertEqual({PubTopic, ReadResult}, test_mqtt_broker:get_published_msg()),
 
     test_close_udp_socket(UdpSock),
@@ -766,6 +763,65 @@ case30_execute(_Config) ->
     ok = application:stop(lwm2m_coap),
     test_mqtt_broker:stop().
 
+
+
+case31_execute_error(_Config) ->
+    application:set_env(?APP, xml_dir, "../../test/xml"),
+    test_mqtt_broker:start_link(),
+    {ok, _Started} = application:ensure_all_started(emq_lwm2m),
+    timer:sleep(100),
+
+    % step 1, device register ...
+    Epn = "urn:oma:lwm2m:oma:3",
+    MsgId1 = 15,
+    {ok, UdpSock} = test_open_udp_socket(),
+    test_send_coap_request( UdpSock,
+                            post,
+                            "coap://127.0.0.1/rd?ep="++Epn++"&lt=345&lwm2m=1",
+                            #coap_content{format = <<"text/plain">>, payload = <<"</1>, </2>, </3/0>, </4>, </5>">>},
+                            [],
+                            MsgId1),
+    #coap_message{method = Method1, payload=Payload1} = test_recv_coap_response(UdpSock),
+    ?assertEqual({ok,created}, Method1),
+    ?assertMatch(<<"/rd/", _Rest/binary>>, Payload1),
+    timer:sleep(50),
+    SubTopic = list_to_binary("lwm2m/"++Epn++"/command"),
+    ?assertEqual([SubTopic], test_mqtt_broker:get_subscrbied_topics()),
+
+
+    % step2,  send a WRITE command to device
+    CommandTopic = <<"lwm2m/", (list_to_binary(Epn))/binary, "/command">>,
+    CmdId = 307,
+    Command = #{?MQ_COMMAND_ID         => CmdId,
+                ?MQ_COMMAND            => <<"Execute">>,
+                ?MQ_BASENAME           => <<"/3/0/4">>,   % Device, Reboot
+                ?MQ_ARGS               => <<"2,7">>
+            },
+    CommandJson = jsx:encode(Command),
+    test_mqtt_broker:dispatch(CommandTopic, CommandJson, CommandTopic),
+    timer:sleep(50),
+    Request2 = test_recv_coap_request(UdpSock),
+    #coap_message{method = Method2, options=Options2, payload=Payload2} = Request2,
+    Path2 = get_coap_path(Options2),
+    ?assertEqual(post, Method2),
+    ?assertEqual(<<"/3/0/4">>, Path2),
+    ?assertEqual(<<"2,7">>, Payload2),
+    timer:sleep(50),
+
+    test_send_coap_response(UdpSock, "127.0.0.1", ?PORT, {error, uauthorized}, #coap_content{}, Request2, false),
+    timer:sleep(100),
+
+    PubTopic = list_to_binary("lwm2m/"++Epn++"/response"),
+    ReadResult = jsx:encode(#{  ?MQ_COMMAND_ID         => CmdId,
+                                ?MQ_COMMAND            => <<"Execute">>,
+                                ?MQ_ERROR              => <<"Unauthorized">>
+                            }),
+    ?assertEqual({PubTopic, ReadResult}, test_mqtt_broker:get_published_msg()),
+
+    test_close_udp_socket(UdpSock),
+    ok = application:stop(emq_lwm2m),
+    ok = application:stop(lwm2m_coap),
+    test_mqtt_broker:stop().
 
 
 

@@ -45,10 +45,12 @@ mqtt_payload_to_coap_request(InputCmd = #{?MQ_COMMAND := <<"Write">>, ?MQ_VALUE 
     Payload = emq_lwm2m_tlv:encode(TlvData),
     CoapRequest = lwm2m_coap_message:request(con, Method, Payload, [{uri_path, [Path]}, {content_format, <<"application/vnd.oma.lwm2m+tlv">>}]),
     {CoapRequest, InputCmd};
-mqtt_payload_to_coap_request(InputCmd = #{?MQ_COMMAND := <<"Execute">>}) ->
-    {ObjectId, ObjectInstanceId, ResourceId} = get_oid_rid(InputCmd),
-    Path = build_path({ObjectId, ObjectInstanceId, ResourceId}),
-    {lwm2m_coap_message:request(con, post, <<>>, [{uri_path, Path}]), InputCmd};
+mqtt_payload_to_coap_request(InputCmd = #{?MQ_COMMAND := <<"Execute">>, ?MQ_BASENAME := Path}) ->
+    Payload =   case maps:get(?MQ_ARGS, InputCmd, undefined) of
+                    undefined -> <<>>;
+                    Data      -> Data
+                end,
+    {lwm2m_coap_message:request(con, post, Payload, [{uri_path, [Path]}, {content_format, <<"text/plain">>}]), InputCmd};
 mqtt_payload_to_coap_request(InputCmd = #{?MQ_COMMAND := <<"Discover">>}) ->
     {ObjectId, ObjectInstanceId, ResourceId} = get_oid_rid(InputCmd),
     Path = build_path({ObjectId, ObjectInstanceId, ResourceId}),
