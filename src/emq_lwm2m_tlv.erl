@@ -153,8 +153,8 @@ encode_value(Value) ->
 
 
 
-
+-ifdef(TEST).
 binary_to_hex_string(Data) ->
     lists:flatten([io_lib:format("~2.16.0B ",[X]) || <<X:8>> <= Data ]).
-
+-endif.
 

@@ -40,7 +40,6 @@ mqtt_payload_to_coap_request(InputCmd = #{?MQ_COMMAND := <<"Write">>, ?MQ_VALUE 
                     [<<>>, _ObjId, <<>>]                    -> post;
                     [<<>>, _ObjId]                          -> post
                 end,
-    ?LOG(debug, "mqtt_payload_to_coap_request write ~p", [Value]),
     TlvData = emq_lwm2m_json:json_to_tlv(Value),
     Payload = emq_lwm2m_tlv:encode(TlvData),
     CoapRequest = lwm2m_coap_message:request(con, Method, Payload, [{uri_path, [Path]}, {content_format, <<"application/vnd.oma.lwm2m+tlv">>}]),
@@ -60,33 +59,31 @@ mqtt_payload_to_coap_request(InputCmd = #{?MQ_COMMAND := <<"Observe">>, ?MQ_BASE
 
 
 coap_response_to_mqtt_payload(Method, CoapPayload, Format, Ref=#{?MQ_COMMAND := <<"Read">>}) ->
-    ?LOG(debug, "coap_response_to_mqtt_payload read Method=~p, CoapPayload=~p, Format=~p, Ref=~p", [Method, CoapPayload, Format, Ref]),
+    %?LOG(debug, "coap_response_to_mqtt_payload read Method=~p, CoapPayload=~p, Format=~p, Ref=~p", [Method, CoapPayload, Format, Ref]),
     coap_read_response_to_mqtt_payload(Method, CoapPayload, Format, Ref);
 coap_response_to_mqtt_payload(Method, CoapPayload, Format, Ref=#{?MQ_COMMAND := <<"Write">>}) ->
-    ?LOG(debug, "coap_response_to_mqtt_payload write Method=~p, CoapPayload=~p, Format=~p, Ref=~p", [Method, CoapPayload, Format, Ref]),
+    %?LOG(debug, "coap_response_to_mqtt_payload write Method=~p, CoapPayload=~p, Format=~p, Ref=~p", [Method, CoapPayload, Format, Ref]),
     coap_write_response_to_mqtt_payload(Method, Ref);
 coap_response_to_mqtt_payload(Method, CoapPayload, Format, Ref=#{?MQ_COMMAND := <<"Execute">>}) ->
-    ?LOG(debug, "coap_response_to_mqtt_payload execute Method=~p, CoapPayload=~p, Format=~p, Ref=~p", [Method, CoapPayload, Format, Ref]),
+    %?LOG(debug, "coap_response_to_mqtt_payload execute Method=~p, CoapPayload=~p, Format=~p, Ref=~p", [Method, CoapPayload, Format, Ref]),
     coap_execute_response_to_mqtt_payload(Method, Ref);
 coap_response_to_mqtt_payload(Method, CoapPayload, Format, Ref=#{?MQ_COMMAND := <<"Discover">>}) ->
-    ?LOG(debug, "coap_response_to_mqtt_payload discover Method=~p, CoapPayload=~p, Format=~p, Ref=~p", [Method, CoapPayload, Format, Ref]),
+    %?LOG(debug, "coap_response_to_mqtt_payload discover Method=~p, CoapPayload=~p, Format=~p, Ref=~p", [Method, CoapPayload, Format, Ref]),
     coap_discover_response_to_mqtt_payload(CoapPayload, Method, Ref);
 coap_response_to_mqtt_payload(Method, CoapPayload, Format, Ref=#{?MQ_COMMAND := <<"Write-Attributes">>}) ->
-    ?LOG(debug, "coap_response_to_mqtt_payload write-attribute Method=~p, CoapPayload=~p, Format=~p, Ref=~p", [Method, CoapPayload, Format, Ref]),
+    %?LOG(debug, "coap_response_to_mqtt_payload write-attribute Method=~p, CoapPayload=~p, Format=~p, Ref=~p", [Method, CoapPayload, Format, Ref]),
     coap_writeattr_response_to_mqtt_payload(CoapPayload, Method, Ref);
 coap_response_to_mqtt_payload(Method, CoapPayload, Format, Ref=#{?MQ_COMMAND := <<"Observe">>}) ->
-    ?LOG(debug, "coap_response_to_mqtt_payload observe Method=~p, CoapPayload=~p, Format=~p, Ref=~p", [Method, CoapPayload, Format, Ref]),
+    %?LOG(debug, "coap_response_to_mqtt_payload observe Method=~p, CoapPayload=~p, Format=~p, Ref=~p", [Method, CoapPayload, Format, Ref]),
     coap_observe_response_to_mqtt_payload(Method, CoapPayload, Format, Ref).
 
 coap_read_response_to_mqtt_payload({error, Error}, _CoapPayload, _Format, Ref) ->
     make_read_error(Ref, error_code(Error));
 coap_read_response_to_mqtt_payload({ok, content}, CoapPayload, Format, Ref) ->
-    ?LOG(debug, "coap_read_response_to_mqtt_payload read CoapPayload=~p, Format=~p, Ref=~p", [CoapPayload, Format, Ref]),
     coap_read_response_to_mqtt_payload2(CoapPayload, Format, Ref).
 
 coap_read_response_to_mqtt_payload2(CoapPayload, <<"text/plain">>, Ref=#{?MQ_BASENAME:=BaseName}) ->
     Result = emq_lwm2m_json:text_to_json(BaseName, CoapPayload),
-    ?LOG(debug, "coap_read_response_to_mqtt_payload2 text CoapPayload=~p, Result=~p", [CoapPayload, Result]),
     make_read_response(Ref, Result);
 coap_read_response_to_mqtt_payload2(CoapPayload, <<"application/octet-stream">>, Ref=#{?MQ_BASENAME:=BaseName}) ->
     Result = emq_lwm2m_json:opaque_to_json(BaseName, CoapPayload),
@@ -126,35 +123,6 @@ coap_observe_response_to_mqtt_payload({error, Error}, _CoapPayload, _Format, Ref
     make_read_error(Ref, error_code(Error));
 coap_observe_response_to_mqtt_payload({ok, content}, CoapPayload, Format, Ref) ->
     coap_read_response_to_mqtt_payload2(CoapPayload, Format, Ref).
-
-
-build_path({undefined, undefined, undefined}) ->
-    error("objectid is missing");
-build_path({ObjectId, undefined, undefined}) ->
-    %ObjDef = emq_lwm2m_xml_object:get_obj_def(ObjectName, false),
-    %Oid = emq_lwm2m_xml_object:get_object_id(ObjDef),
-    make_path("/~b", [ObjectId]);
-build_path({ObjectId, ObjectInstanceId, undefined}) ->
-    %ObjDef = emq_lwm2m_xml_object:get_obj_def(ObjectName, false),
-    %Oid = emq_lwm2m_xml_object:get_object_id(ObjDef),
-    make_path("/~b/~b", [ObjectId, ObjectInstanceId]);
-build_path({ObjectId, ObjectInstanceId, ResourceId}) ->
-    %ObjDef = emq_lwm2m_xml_object:get_obj_def(ObjectName, false),
-    %{Oid, Rid} = emq_lwm2m_xml_object:get_object_and_resource_id(ResourceId, ObjDef),
-    make_path("/~b/~b/~b", [ObjectId, ObjectInstanceId, ResourceId]).
-
-
-make_path(Format, Args) ->
-    [list_to_binary(lists:flatten(io_lib:format(Format, Args)))].
-
-
-get_oid_rid(MqttPayload) ->
-    ?LOG(debug, "get_oid_rid() MqttPayload=~p", [MqttPayload]),
-    ObjectId         = maps:get(?MQ_OBJECT_ID, MqttPayload, undefined),
-    ObjectInstanceId = maps:get(?MQ_OBJECT_INSTANCE_ID, MqttPayload, undefined),
-    ResourceId       = maps:get(?MQ_RESOURCE_ID, MqttPayload, undefined),
-    % they are all binary type
-    {ObjectId, ObjectInstanceId, ResourceId}.
 
 
 
@@ -207,16 +175,4 @@ error_code(bad_request) ->
     <<"Bad Request">>.
 
 
-to_binary(true) ->
-    <<"1">>;
-to_binary(false) ->
-    <<"0">>;
-to_binary(Value) when is_integer(Value) ->
-    list_to_binary(io_lib:format("~b", [Value]));
-to_binary(Value) when is_float(Value) ->
-    list_to_binary(io_lib:format("~f", [Value]));
-to_binary(Value) when is_list(Value) ->
-    list_to_binary(Value);
-to_binary(Value) when is_binary(Value) ->
-    Value.
 
