@@ -25,7 +25,7 @@
 
 
 start(_Type, _Args) ->
-    Port = application:get_env(?APP, port, 5683),
+    Port = application:get_env(?APP, port, 5783),
     Pid = emq_lwm2m_sup:start_link(),
     emq_lwm2m_coap_server:start(Port),
     Pid.

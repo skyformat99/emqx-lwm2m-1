@@ -27,7 +27,7 @@
 
 
 start() ->
-    Port = application:get_env(?APP, port, 5683),
+    Port = application:get_env(?APP, port, 5783),
     start(Port).
 
 start(Port) ->
@@ -38,7 +38,7 @@ start(Port) ->
     KeyFile = application:get_env(?APP, keyfile, ""),
     case (filelib:is_regular(CertFile) andalso filelib:is_regular(KeyFile)) of
         true ->
-            lwm2m_coap_server:start_dtls(lwm2m_dtls_socket, [{certfile, CertFile}, {keyfile, KeyFile}]);
+            lwm2m_coap_server:start_dtls(lwm2m_dtls_socket, Port+1, [{certfile, CertFile}, {keyfile, KeyFile}]);
         false ->
             ?LOG(error, "certfile ~p or keyfile ~p are not valid, turn off coap DTLS", [CertFile, KeyFile])
     end,
