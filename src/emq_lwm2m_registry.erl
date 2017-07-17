@@ -31,11 +31,11 @@
 
 -record(state, {}).
 
--define(RESPONSE_TAB, coap_response_process).
--define(RESPONSE_REF_TAB, coap_response_process_ref).
+-define(RESPONSE_TAB, lwm2m_coap_response_process).
+-define(RESPONSE_REF_TAB, lwm2m_coap_response_process_ref).
 
 -define(LOG(Level, Format, Args),
-    lager:Level("CoAP-REG: " ++ Format, Args)).
+    lager:Level("LWM2M-REG: " ++ Format, Args)).
 
 
 %% ------------------------------------------------------------------

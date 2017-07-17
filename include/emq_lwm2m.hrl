@@ -22,10 +22,6 @@
 
 -define(MQ_COMMAND_ID,         <<"CmdID">>).
 -define(MQ_COMMAND,            <<"Command">>).
-
--define(MQ_OBJECT_ID,          <<"ObjectID">>).
--define(MQ_OBJECT_INSTANCE_ID, <<"ObjectInstanceID">>).
--define(MQ_RESOURCE_ID,        <<"ResourceID">>).
 -define(MQ_BASENAME,           <<"BaseName">>).
 -define(MQ_ARGS,               <<"Arguments">>).
 
@@ -37,10 +33,10 @@
 
 
 -define(LWM2M_FORMAT_PLAIN_TEXT, 0).
--define(LWM2M_FORMAT_LINK, 40).
--define(LWM2M_FORMAT_OPAQUE, 42).
--define(LWM2M_FORMAT_TLV, 11542).
--define(LWMWM_FORMAT_JSON, 11543).
+-define(LWM2M_FORMAT_LINK,       40).
+-define(LWM2M_FORMAT_OPAQUE,     42).
+-define(LWM2M_FORMAT_TLV,        11542).
+-define(LWMWM_FORMAT_JSON,       11543).
 
 
 

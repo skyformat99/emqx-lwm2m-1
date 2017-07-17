@@ -20,7 +20,7 @@ start_broker:
 	sleep 1
 	emq-relx/_rel/emqttd/bin/emqttd start
 	sleep 1
-	emq-relx/_rel/emqttd/bin/emqttd_ctl plugins load emq_coap
+	emq-relx/_rel/emqttd/bin/emqttd_ctl plugins load emq_lwm2m
 
 
 stop_broker:
@@ -30,7 +30,6 @@ stop_broker:
 case1:
 	$(ANJAY_ROOT)/Anjay/output/bin/demo --server-uri coap://127.0.0.1:5783
 	sleep 1
-	python check_result.py  case1  case1_output.txt==w123G45
 	
 
 
@@ -97,7 +96,7 @@ clean: clean_result
 	
 	
 	
-lazy: clean_result start_broker case1  stop_broker
+lazy: clean_result start_broker case1 stop_broker
 	# custom your command here
 	@echo "you are so lazy"
 	
