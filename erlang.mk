@@ -331,7 +331,6 @@ endif
 # While Makefile file could be GNUmakefile or makefile,
 # in practice only Makefile is needed so far.
 define dep_autopatch
-	@echo "chenlei dep_autopatch $(DEPS_DIR) 1=$(1)"
 	if [ -f $(DEPS_DIR)/$(1)/erlang.mk ]; then \
 		$(call erlang,$(call dep_autopatch_appsrc.erl,$(1))); \
 		$(call dep_autopatch_erlang_mk,$(1)); \
@@ -355,7 +354,6 @@ define dep_autopatch
 endef
 
 define dep_autopatch2
-	@echo "chenlei dep_autopatch2"
 	if [ -f $(DEPS_DIR)/$1/src/$1.app.src.script ]; then \
 		$(call erlang,$(call dep_autopatch_appsrc_script.erl,$(1))); \
 	fi; \
@@ -385,7 +383,6 @@ endef
 endif
 
 define dep_autopatch_gen
-	@echo "chenlei do auto path"
 	printf "%s\n" \
 		"ERLC_OPTS = +debug_info" \
 		"include ../../erlang.mk" > $(DEPS_DIR)/$(1)/Makefile

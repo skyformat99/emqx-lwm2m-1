@@ -55,7 +55,7 @@ $(EMQ):
 	-mkdir emq-relx/deps
 	mv emq_lwm2m  emq-relx/deps/
 	@echo "start building ..."
-	insert_lwm2m_plugin.py
+	python insert_lwm2m_plugin.py
 	make -C emq-relx -f Makefile
 	
 
@@ -93,7 +93,7 @@ clean: clean_result
 	-rm -f client/*.exe
 	-rm -f client/*.o
 	-rm -rf emq-relx
-	-rm -rf Anjay
+	-rm -rf $(ANJAY_ROOT)/Anjay
 	
 	
 	

@@ -1,7 +1,7 @@
 
 
 f = open("emq-relx/Makefile", "rb")
-data = read(f)
+data = f.read()
 f.close()
 
 if data.find("emq_lwm2m") < 0:
@@ -12,7 +12,7 @@ if data.find("emq_lwm2m") < 0:
     
 
 f = open("emq-relx/relx.config", "rb")
-data = read(f)
+data = f.read()
 f.close()
 
 if data.find("emq_lwm2m") < 0:
