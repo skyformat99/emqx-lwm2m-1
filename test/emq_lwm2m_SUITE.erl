@@ -18,7 +18,7 @@
 
 -compile(export_all).
 
--define(PORT, 5683).
+-define(PORT, 5783).
 
 -define(LOGT(Format, Args), lager:debug("TEST_SUITE: " ++ Format, Args)).
 
@@ -47,6 +47,7 @@ end_per_suite(Config) ->
 
 
 case01_register(_Config) ->
+    application:set_env(?APP, port, ?PORT),
     test_mqtt_broker:start_link(),
     {ok, _Started} = application:ensure_all_started(emq_lwm2m),
     timer:sleep(100),
@@ -59,8 +60,8 @@ case01_register(_Config) ->
     {ok, UdpSock} = test_open_udp_socket(),
     test_send_coap_request( UdpSock,
                             post,
-                            "coap://127.0.0.1/rd?ep="++Epn++"&lt=345&lwm2m=1", #coap_content{format = <<"text/plain">>,
-                            payload = <<"</1>, </2>, </3>, </4>, </5>">>},
+                            sprintf("coap://127.0.0.1:~b/rd?ep=~s&lt=345&lwm2m=1", [?PORT, Epn]),
+                            #coap_content{format = <<"text/plain">>, payload = <<"</1>, </2>, </3>, </4>, </5>">>},
                             [],
                             MsgId),
     #coap_message{type = ack, method = Method} = test_recv_coap_response(UdpSock),
@@ -76,6 +77,7 @@ case01_register(_Config) ->
 
 
 case02_update_deregister(_Config) ->
+    application:set_env(?APP, port, ?PORT),
     test_mqtt_broker:start_link(),
     {ok, _Started} = application:ensure_all_started(emq_lwm2m),
     timer:sleep(100),
@@ -88,7 +90,7 @@ case02_update_deregister(_Config) ->
     {ok, UdpSock} = test_open_udp_socket(),
     test_send_coap_request( UdpSock,
                             post,
-                            "coap://127.0.0.1/rd?ep="++Epn++"&lt=345&lwm2m=1",
+                            sprintf("coap://127.0.0.1:~b/rd?ep=~s&lt=345&lwm2m=1", [?PORT, Epn]),
                             #coap_content{format = <<"text/plain">>, payload = <<"</1>, </2>, </3>, </4>, </5>">>},
                             [],
                             MsgId),
@@ -108,7 +110,7 @@ case02_update_deregister(_Config) ->
     MsgId2 = 27,
     test_send_coap_request( UdpSock,
                             post,
-                            "coap://127.0.0.1"++LocationString++"?lt=789",
+                            sprintf("coap://127.0.0.1:~b~s?lt=789", [?PORT, LocationString]),
                             #coap_content{payload = <<>>},
                             [],
                             MsgId2),
@@ -124,7 +126,7 @@ case02_update_deregister(_Config) ->
     MsgId3 = 52,
     test_send_coap_request( UdpSock,
                             delete,
-                            "coap://127.0.0.1"++LocationString,
+                            sprintf("coap://127.0.0.1:~b~s", [?PORT, LocationString]),
                             #coap_content{payload = <<>>},
                             [],
                             MsgId3),
@@ -143,6 +145,7 @@ case02_update_deregister(_Config) ->
 
 
 case03_register_wrong_version(_Config) ->
+    application:set_env(?APP, port, ?PORT),
     test_mqtt_broker:start_link(),
     {ok, _Started} = application:ensure_all_started(emq_lwm2m),
     timer:sleep(100),
@@ -155,7 +158,7 @@ case03_register_wrong_version(_Config) ->
     {ok, UdpSock} = test_open_udp_socket(),
     test_send_coap_request( UdpSock,
                             post,
-                            "coap://127.0.0.1/rd?ep="++Epn++"&lt=345&lwm2m=8.3",
+                            sprintf("coap://127.0.0.1:~b/rd?ep=~s&lt=345&lwm2m=8.3", [?PORT, Epn]),
                             #coap_content{format = <<"text/plain">>, payload = <<"</1>, </2>, </3>, </4>, </5>">>},
                             [],
                             MsgId),
@@ -172,6 +175,7 @@ case03_register_wrong_version(_Config) ->
 
 
 case04_register_and_lifetime_timeout(_Config) ->
+    application:set_env(?APP, port, ?PORT),
     test_mqtt_broker:start_link(),
     {ok, _Started} = application:ensure_all_started(emq_lwm2m),
     timer:sleep(100),
@@ -184,7 +188,7 @@ case04_register_and_lifetime_timeout(_Config) ->
     {ok, UdpSock} = test_open_udp_socket(),
     test_send_coap_request( UdpSock,
                             post,
-                            "coap://127.0.0.1/rd?ep="++Epn++"&lt=1&lwm2m=1",
+                            sprintf("coap://127.0.0.1:~b/rd?ep=~s&lt=1&lwm2m=1", [?PORT, Epn]),
                             #coap_content{format = <<"text/plain">>, payload = <<"</1>, </2>, </3>, </4>, </5>">>},
                             [],
                             MsgId),
@@ -211,6 +215,7 @@ case04_register_and_lifetime_timeout(_Config) ->
 
 
 case05_register_wrong_epn(_Config) ->
+    application:set_env(?APP, port, ?PORT),
     test_mqtt_broker:start_link(),
     {ok, _Started} = application:ensure_all_started(emq_lwm2m),
     timer:sleep(100),
@@ -223,7 +228,7 @@ case05_register_wrong_epn(_Config) ->
     {ok, UdpSock} = test_open_udp_socket(),
     test_send_coap_request( UdpSock,
                             post,
-                            "coap://127.0.0.1/rd?lt=345&lwm2m=1.0",
+                            sprintf("coap://127.0.0.1:~b/rd?lt=345&lwm2m=1.0", [?PORT]),
                             #coap_content{format = <<"text/plain">>, payload = <<"</1>, </2>, </3>, </4>, </5>">>},
                             [],
                             MsgId),
@@ -241,6 +246,7 @@ case05_register_wrong_epn(_Config) ->
 
 
 case06_register_wrong_lifetime(_Config) ->
+    application:set_env(?APP, port, ?PORT),
     test_mqtt_broker:start_link(),
     {ok, _Started} = application:ensure_all_started(emq_lwm2m),
     timer:sleep(100),
@@ -253,7 +259,7 @@ case06_register_wrong_lifetime(_Config) ->
     {ok, UdpSock} = test_open_udp_socket(),
     test_send_coap_request( UdpSock,
                             post,
-                            "coap://127.0.0.1/rd?ep="++Epn++"&lwm2m=1.0",
+                            sprintf("coap://127.0.0.1:~b/rd?ep=~s&lwm2m=1", [?PORT, Epn]),
                             #coap_content{format = <<"text/plain">>, payload = <<"</1>, </2>, </3>, </4>, </5>">>},
                             [],
                             MsgId),
@@ -271,6 +277,7 @@ case06_register_wrong_lifetime(_Config) ->
 
 
 case10_read(_Config) ->
+    application:set_env(?APP, port, ?PORT),
     application:set_env(?APP, xml_dir, "../../test/xml"),
     test_mqtt_broker:start_link(),
     {ok, _Started} = application:ensure_all_started(emq_lwm2m),
@@ -282,7 +289,7 @@ case10_read(_Config) ->
     {ok, UdpSock} = test_open_udp_socket(),
     test_send_coap_request( UdpSock,
                             post,
-                            "coap://127.0.0.1/rd?ep="++Epn++"&lt=345&lwm2m=1",
+                            sprintf("coap://127.0.0.1:~b/rd?ep=~s&lt=345&lwm2m=1", [?PORT, Epn]),
                             #coap_content{format = <<"text/plain">>, payload = <<"</1>, </2>, </3/0>, </4>, </5>">>},
                             [],
                             MsgId1),
@@ -333,6 +340,7 @@ case10_read(_Config) ->
 
 
 case11_read_object_tlv(_Config) ->
+    application:set_env(?APP, port, ?PORT),
     application:set_env(?APP, xml_dir, "../../test/xml"),
     test_mqtt_broker:start_link(),
     {ok, _Started} = application:ensure_all_started(emq_lwm2m),
@@ -344,7 +352,7 @@ case11_read_object_tlv(_Config) ->
     {ok, UdpSock} = test_open_udp_socket(),
     test_send_coap_request( UdpSock,
                             post,
-                            "coap://127.0.0.1/rd?ep="++Epn++"&lt=345&lwm2m=1",
+                            sprintf("coap://127.0.0.1:~b/rd?ep=~s&lt=345&lwm2m=1", [?PORT, Epn]),
                             #coap_content{format = <<"text/plain">>, payload = <<"</1>, </2>, </3/0>, </4>, </5>">>},
                             [],
                             MsgId1),
@@ -398,6 +406,7 @@ case11_read_object_tlv(_Config) ->
 
 
 case11_read_object_json(_Config) ->
+    application:set_env(?APP, port, ?PORT),
     application:set_env(?APP, xml_dir, "../../test/xml"),
     test_mqtt_broker:start_link(),
     {ok, _Started} = application:ensure_all_started(emq_lwm2m),
@@ -409,7 +418,7 @@ case11_read_object_json(_Config) ->
     {ok, UdpSock} = test_open_udp_socket(),
     test_send_coap_request( UdpSock,
                             post,
-                            "coap://127.0.0.1/rd?ep="++Epn++"&lt=345&lwm2m=1",
+                            sprintf("coap://127.0.0.1:~b/rd?ep=~s&lt=345&lwm2m=1", [?PORT, Epn]),
                             #coap_content{format = <<"text/plain">>, payload = <<"</1>, </2>, </3/0>, </4>, </5>">>},
                             [],
                             MsgId1),
@@ -462,6 +471,7 @@ case11_read_object_json(_Config) ->
 
 
 case12_read_resource_opaque(_Config) ->
+    application:set_env(?APP, port, ?PORT),
     application:set_env(?APP, xml_dir, "../../test/xml"),
     test_mqtt_broker:start_link(),
     {ok, _Started} = application:ensure_all_started(emq_lwm2m),
@@ -473,7 +483,7 @@ case12_read_resource_opaque(_Config) ->
     {ok, UdpSock} = test_open_udp_socket(),
     test_send_coap_request( UdpSock,
                             post,
-                            "coap://127.0.0.1/rd?ep="++Epn++"&lt=345&lwm2m=1",
+                            sprintf("coap://127.0.0.1:~b/rd?ep=~s&lt=345&lwm2m=1", [?PORT, Epn]),
                             #coap_content{format = <<"text/plain">>, payload = <<"</1>, </2>, </3/0>, </4>, </5>">>},
                             [],
                             MsgId1),
@@ -523,6 +533,7 @@ case12_read_resource_opaque(_Config) ->
 
 
 case20_write(_Config) ->
+    application:set_env(?APP, port, ?PORT),
     application:set_env(?APP, xml_dir, "../../test/xml"),
     test_mqtt_broker:start_link(),
     {ok, _Started} = application:ensure_all_started(emq_lwm2m),
@@ -534,7 +545,7 @@ case20_write(_Config) ->
     {ok, UdpSock} = test_open_udp_socket(),
     test_send_coap_request( UdpSock,
                             post,
-                            "coap://127.0.0.1/rd?ep="++Epn++"&lt=345&lwm2m=1",
+                            sprintf("coap://127.0.0.1:~b/rd?ep=~s&lt=345&lwm2m=1", [?PORT, Epn]),
                             #coap_content{format = <<"text/plain">>, payload = <<"</1>, </2>, </3/0>, </4>, </5>">>},
                             [],
                             MsgId1),
@@ -582,6 +593,7 @@ case20_write(_Config) ->
 
 
 case21_write_object(_Config) ->
+    application:set_env(?APP, port, ?PORT),
     application:set_env(?APP, xml_dir, "../../test/xml"),
     test_mqtt_broker:start_link(),
     {ok, _Started} = application:ensure_all_started(emq_lwm2m),
@@ -593,7 +605,7 @@ case21_write_object(_Config) ->
     {ok, UdpSock} = test_open_udp_socket(),
     test_send_coap_request( UdpSock,
                             post,
-                            "coap://127.0.0.1/rd?ep="++Epn++"&lt=345&lwm2m=1",
+                            sprintf("coap://127.0.0.1:~b/rd?ep=~s&lt=345&lwm2m=1", [?PORT, Epn]),
                             #coap_content{format = <<"text/plain">>, payload = <<"</1>, </2>, </3/0>, </4>, </5>">>},
                             [],
                             MsgId1),
@@ -646,6 +658,7 @@ case21_write_object(_Config) ->
 
 
 case22_write_error(_Config) ->
+    application:set_env(?APP, port, ?PORT),
     application:set_env(?APP, xml_dir, "../../test/xml"),
     test_mqtt_broker:start_link(),
     {ok, _Started} = application:ensure_all_started(emq_lwm2m),
@@ -657,7 +670,7 @@ case22_write_error(_Config) ->
     {ok, UdpSock} = test_open_udp_socket(),
     test_send_coap_request( UdpSock,
                             post,
-                            "coap://127.0.0.1/rd?ep="++Epn++"&lt=345&lwm2m=1",
+                            sprintf("coap://127.0.0.1:~b/rd?ep=~s&lt=345&lwm2m=1", [?PORT, Epn]),
                             #coap_content{format = <<"text/plain">>, payload = <<"</1>, </2>, </3/0>, </4>, </5>">>},
                             [],
                             MsgId1),
@@ -691,9 +704,9 @@ case22_write_error(_Config) ->
     timer:sleep(100),
 
     PubTopic = list_to_binary("lwm2m/"++Epn++"/response"),
-    ReadResult = jsx:encode(#{  ?MQ_COMMAND_ID         => CmdId,
-                                ?MQ_COMMAND            => <<"Write">>,
-                                ?MQ_RESULT             => <<"Bad Request">>
+    ReadResult = jsx:encode(#{  ?MQ_COMMAND_ID  => CmdId,
+                                ?MQ_COMMAND     => <<"Write">>,
+                                ?MQ_ERROR       => <<"Bad Request">>
                             }),
     ?assertEqual({PubTopic, ReadResult}, test_mqtt_broker:get_published_msg()),
 
@@ -706,6 +719,7 @@ case22_write_error(_Config) ->
 
 
 case30_execute(_Config) ->
+    application:set_env(?APP, port, ?PORT),
     application:set_env(?APP, xml_dir, "../../test/xml"),
     test_mqtt_broker:start_link(),
     {ok, _Started} = application:ensure_all_started(emq_lwm2m),
@@ -717,7 +731,7 @@ case30_execute(_Config) ->
     {ok, UdpSock} = test_open_udp_socket(),
     test_send_coap_request( UdpSock,
                             post,
-                            "coap://127.0.0.1/rd?ep="++Epn++"&lt=345&lwm2m=1",
+                            sprintf("coap://127.0.0.1:~b/rd?ep=~s&lt=345&lwm2m=1", [?PORT, Epn]),
                             #coap_content{format = <<"text/plain">>, payload = <<"</1>, </2>, </3/0>, </4>, </5>">>},
                             [],
                             MsgId1),
@@ -766,6 +780,7 @@ case30_execute(_Config) ->
 
 
 case31_execute_error(_Config) ->
+    application:set_env(?APP, port, ?PORT),
     application:set_env(?APP, xml_dir, "../../test/xml"),
     test_mqtt_broker:start_link(),
     {ok, _Started} = application:ensure_all_started(emq_lwm2m),
@@ -777,7 +792,7 @@ case31_execute_error(_Config) ->
     {ok, UdpSock} = test_open_udp_socket(),
     test_send_coap_request( UdpSock,
                             post,
-                            "coap://127.0.0.1/rd?ep="++Epn++"&lt=345&lwm2m=1",
+                            sprintf("coap://127.0.0.1:~b/rd?ep=~s&lt=345&lwm2m=1", [?PORT, Epn]),
                             #coap_content{format = <<"text/plain">>, payload = <<"</1>, </2>, </3/0>, </4>, </5>">>},
                             [],
                             MsgId1),
@@ -826,6 +841,7 @@ case31_execute_error(_Config) ->
 
 
 case40_discover(_Config) ->
+    application:set_env(?APP, port, ?PORT),
     application:set_env(?APP, xml_dir, "../../test/xml"),
     test_mqtt_broker:start_link(),
     {ok, _Started} = application:ensure_all_started(emq_lwm2m),
@@ -837,7 +853,7 @@ case40_discover(_Config) ->
     {ok, UdpSock} = test_open_udp_socket(),
     test_send_coap_request( UdpSock,
                             post,
-                            "coap://127.0.0.1/rd?ep="++Epn++"&lt=345&lwm2m=1",
+                            sprintf("coap://127.0.0.1:~b/rd?ep=~s&lt=345&lwm2m=1", [?PORT, Epn]),
                             #coap_content{format = <<"text/plain">>, payload = <<"</1>, </2>, </3/0>, </4>, </5>">>},
                             [],
                             MsgId1),
@@ -893,6 +909,7 @@ case40_discover(_Config) ->
 
 
 case50_write_attribute(_Config) ->
+    application:set_env(?APP, port, ?PORT),
     application:set_env(?APP, xml_dir, "../../test/xml"),
     test_mqtt_broker:start_link(),
     {ok, _Started} = application:ensure_all_started(emq_lwm2m),
@@ -904,7 +921,7 @@ case50_write_attribute(_Config) ->
     {ok, UdpSock} = test_open_udp_socket(),
     test_send_coap_request( UdpSock,
                             post,
-                            "coap://127.0.0.1/rd?ep="++Epn++"&lt=345&lwm2m=1",
+                            sprintf("coap://127.0.0.1:~b/rd?ep=~s&lt=345&lwm2m=1", [?PORT, Epn]),
                             #coap_content{format = <<"text/plain">>, payload = <<"</1>, </2>, </3/0>, </4>, </5>">>},
                             [],
                             MsgId1),
@@ -964,6 +981,7 @@ case50_write_attribute(_Config) ->
 
 
 case60_observe(_Config) ->
+    application:set_env(?APP, port, ?PORT),
     application:set_env(?APP, xml_dir, "../../test/xml"),
     test_mqtt_broker:start_link(),
     {ok, _Started} = application:ensure_all_started(emq_lwm2m),
@@ -975,7 +993,7 @@ case60_observe(_Config) ->
     {ok, UdpSock} = test_open_udp_socket(),
     test_send_coap_request( UdpSock,
                             post,
-                            "coap://127.0.0.1/rd?ep="++Epn++"&lt=345&lwm2m=1",
+                            sprintf("coap://127.0.0.1:~b/rd?ep=~s&lt=345&lwm2m=1", [?PORT, Epn]),
                             #coap_content{format = <<"text/plain">>, payload = <<"</1>, </2>, </3/0>, </4>, </5>">>},
                             [],
                             MsgId1),
@@ -1203,5 +1221,9 @@ join_path([], Acc) ->
 join_path([H|T], Acc) ->
     join_path(T, <<Acc/binary, H/binary>>).
 
+
+
+sprintf(Format, Args) ->
+    lists:flatten(io_lib:format(Format, Args)).
 
 

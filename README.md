@@ -92,6 +92,14 @@ Response
     "Result": {?Code}
 }
 ```
+or
+```
+{
+    "CmdID": {?CmdID},
+    "Command": "Write",
+    "Error": {?Code}
+}
+```
 - {?CmdID}, an integer to identify a command response against its request.
 - {?Code} could be "Changed", "Bad Request", "Not Found", "Unauthorized" or "Method Not Allowed"
 
