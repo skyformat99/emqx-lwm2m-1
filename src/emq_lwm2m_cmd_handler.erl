@@ -28,33 +28,31 @@
 
 
 mqtt_payload_to_coap_request(InputCmd = #{?MQ_COMMAND := <<"Read">>, ?MQ_BASENAME := Path}) ->
-    {lwm2m_coap_message:request(con, get, <<>>, [{uri_path, [Path]}]), InputCmd};
+    {_Method, PathList} = path_list(Path),
+    {lwm2m_coap_message:request(con, get, <<>>, [{uri_path, PathList}]), InputCmd};
 mqtt_payload_to_coap_request(InputCmd = #{?MQ_COMMAND := <<"Write">>, ?MQ_VALUE := Value}) ->
     #{<<"bn">>:=Path} = Value,
-    Method =    case binary:split(Path, [<<$/>>], [global]) of
-                    [<<>>, _ObjId, _ObjInsId, _ResId, <<>>] -> put;
-                    [<<>>, _ObjId, _ObjInsId, _ResId]       -> put;
-                    [<<>>, _ObjId, _ObjInsId, <<>>]         -> post;
-                    [<<>>, _ObjId, _ObjInsId]               -> post;
-                    [<<>>, _ObjId, <<>>]                    -> post;
-                    [<<>>, _ObjId]                          -> post
-                end,
+    {Method, PathList} = path_list(Path),
     TlvData = emq_lwm2m_json:json_to_tlv(Value),
     Payload = emq_lwm2m_tlv:encode(TlvData),
-    CoapRequest = lwm2m_coap_message:request(con, Method, Payload, [{uri_path, [Path]}, {content_format, <<"application/vnd.oma.lwm2m+tlv">>}]),
+    CoapRequest = lwm2m_coap_message:request(con, Method, Payload, [{uri_path, PathList}, {content_format, <<"application/vnd.oma.lwm2m+tlv">>}]),
     {CoapRequest, InputCmd};
 mqtt_payload_to_coap_request(InputCmd = #{?MQ_COMMAND := <<"Execute">>, ?MQ_BASENAME := Path}) ->
+    {_Method, PathList} = path_list(Path),
     Payload =   case maps:get(?MQ_ARGS, InputCmd, undefined) of
                     undefined -> <<>>;
                     Data      -> Data
                 end,
-    {lwm2m_coap_message:request(con, post, Payload, [{uri_path, [Path]}, {content_format, <<"text/plain">>}]), InputCmd};
+    {lwm2m_coap_message:request(con, post, Payload, [{uri_path, PathList}, {content_format, <<"text/plain">>}]), InputCmd};
 mqtt_payload_to_coap_request(InputCmd = #{?MQ_COMMAND := <<"Discover">>, ?MQ_BASENAME := Path}) ->
-    {lwm2m_coap_message:request(con, get, <<>>, [{uri_path, [Path]}, {'accept', ?LWM2M_FORMAT_LINK}]), InputCmd};
+    {_Method, PathList} = path_list(Path),
+    {lwm2m_coap_message:request(con, get, <<>>, [{uri_path, PathList}, {'accept', ?LWM2M_FORMAT_LINK}]), InputCmd};
 mqtt_payload_to_coap_request(InputCmd = #{?MQ_COMMAND := <<"Write-Attributes">>, ?MQ_BASENAME := Path, ?MQ_VALUE := Query}) ->
-    {lwm2m_coap_message:request(con, put, <<>>, [{uri_path, [Path]}, {uri_query, [Query]}]), InputCmd};
+    {_Method, PathList} = path_list(Path),
+    {lwm2m_coap_message:request(con, put, <<>>, [{uri_path, PathList}, {uri_query, [Query]}]), InputCmd};
 mqtt_payload_to_coap_request(InputCmd = #{?MQ_COMMAND := <<"Observe">>, ?MQ_BASENAME := Path}) ->
-    {lwm2m_coap_message:request(con, get, <<>>, [{uri_path, [Path]}, {observe, 0}]), InputCmd}.
+    {_Method, PathList} = path_list(Path),
+    {lwm2m_coap_message:request(con, get, <<>>, [{uri_path, PathList}, {observe, 0}]), InputCmd}.
 
 coap_response_to_mqtt_payload(Method, CoapPayload, Format, Ref=#{?MQ_COMMAND := <<"Read">>}) ->
     %?LOG(debug, "coap_response_to_mqtt_payload read Method=~p, CoapPayload=~p, Format=~p, Ref=~p", [Method, CoapPayload, Format, Ref]),
@@ -81,15 +79,21 @@ coap_read_response_to_mqtt_payload({ok, content}, CoapPayload, Format, Ref) ->
     coap_read_response_to_mqtt_payload2(CoapPayload, Format, Ref).
 
 coap_read_response_to_mqtt_payload2(CoapPayload, <<"text/plain">>, Ref=#{?MQ_BASENAME:=BaseName}) ->
-    Result = emq_lwm2m_json:text_to_json(BaseName, CoapPayload),
-    make_response(Ref, Result);
+    case catch emq_lwm2m_json:text_to_json(BaseName, CoapPayload) of
+        {'EXIT',{no_xml_definition, _}} -> make_error(Ref, <<"No XML Definition">>);
+        Result                          -> make_response(Ref, Result)
+    end;
 coap_read_response_to_mqtt_payload2(CoapPayload, <<"application/octet-stream">>, Ref=#{?MQ_BASENAME:=BaseName}) ->
-    Result = emq_lwm2m_json:opaque_to_json(BaseName, CoapPayload),
-    make_response(Ref, Result);
+    case catch emq_lwm2m_json:opaque_to_json(BaseName, CoapPayload) of
+        {'EXIT',{no_xml_definition, _}} -> make_error(Ref, <<"No XML Definition">>);
+        Result                          -> make_response(Ref, Result)
+    end;
 coap_read_response_to_mqtt_payload2(CoapPayload, <<"application/vnd.oma.lwm2m+tlv">>, Ref=#{?MQ_BASENAME:=BaseName}) ->
     Decode = emq_lwm2m_tlv:parse(CoapPayload),
-    Result = emq_lwm2m_json:tlv_to_json(BaseName, Decode),
-    make_response(Ref, Result);
+    case catch emq_lwm2m_json:tlv_to_json(BaseName, Decode) of
+        no_xml_definition -> make_error(Ref, <<"No XML Definition">>);
+        Result -> make_response(Ref, Result)
+    end;
 coap_read_response_to_mqtt_payload2(CoapPayload, <<"application/vnd.oma.lwm2m+json">>, Ref) ->
     Result = jsx:decode(CoapPayload),
     make_response(Ref, Result).
@@ -144,5 +148,20 @@ error_code(uauthorized) ->
 error_code(bad_request) ->
     <<"Bad Request">>.
 
+path_list(Path) ->
+    case binary:split(Path, [<<$/>>], [global]) of
+        [<<>>, ObjId, ObjInsId, ResId, <<>>] -> {put,  [ObjId, ObjInsId, ResId]};
+        [<<>>, ObjId, ObjInsId, ResId]       -> {put,  [ObjId, ObjInsId, ResId]};
+        [<<>>, ObjId, ObjInsId, <<>>]        -> {post, [ObjId, ObjInsId]};
+        [<<>>, ObjId, ObjInsId]              -> {post, [ObjId, ObjInsId]};
+        [<<>>, ObjId, <<>>]                  -> {post, [ObjId]};
+        [<<>>, ObjId]                        -> {post, [ObjId]};
+        [ObjId, ObjInsId, ResId, <<>>]       -> {put,  [ObjId, ObjInsId, ResId]};
+        [ObjId, ObjInsId, ResId]             -> {put,  [ObjId, ObjInsId, ResId]};
+        [ObjId, ObjInsId, <<>>]              -> {post, [ObjId, ObjInsId]};
+        [ObjId, ObjInsId]                    -> {post, [ObjId, ObjInsId]};
+        [ObjId, <<>>]                        -> {post, [ObjId]};
+        [ObjId]                              -> {post, [ObjId]}
+    end.
 
 

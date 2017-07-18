@@ -58,12 +58,12 @@ $(EMQ):
 	
 
 w:
-	cd build_wakaama && make
+	cd build_wakaama && cmake -DCMAKE_BUILD_TYPE=Debug ../wakaama/examples/lightclient && make
 
 $(WAKAAMA):
 	git clone https://github.com/eclipse/wakaama
 	-mkdir build_wakaama
-	cd build_wakaama && cmake ../wakaama/examples/lightclient && make
+	cd build_wakaama && cmake -DCMAKE_BUILD_TYPE=Debug ../wakaama/examples/lightclient && make
 	
 	
 mqtt_client: paho.mqtt.python/src/paho

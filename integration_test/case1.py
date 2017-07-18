@@ -11,7 +11,7 @@ conclusion = False
 
 def on_connect(mqttc, userdata, flags, rc):
     global DeviceId
-    json = "{\"CmdID\":3,\"Command\":\"Discover\",\"BaseName\":\"/3\"}"
+    json = "{\"CmdID\":5,\"Command\":\"Read\",\"BaseName\":\"/3/0\"}"
     mqttc.publish("lwm2m/"+DeviceId+"/command", json)
 
 def on_message(mqttc, userdata, msg):

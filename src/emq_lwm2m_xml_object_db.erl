@@ -53,7 +53,7 @@ find_objectid(ObjectId) ->
                         false -> ObjectId
                     end,
     case ets:lookup(?LWM2M_OBJECT_DEF_TAB, ObjectIdInt) of
-        []                -> undefined;
+        []                -> error(no_xml_definition);
         [{ObjectId, Xml}] -> Xml
     end.
 
