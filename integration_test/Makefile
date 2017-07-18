@@ -1,12 +1,11 @@
 
 .PHONY: clean, clean_result, start_broker  stop_broker  case1 
 
-ANJAY_ROOT ?= .
 
 EMQ    = emq-relx/relx.config
-ANJAY  = $(ANJAY_ROOT)/Anjay/output/bin/demo
+WAKAAMA  = build_wakaama/lightclient
 
-all:  clean_result $(EMQ) $(ANJAY) start_broker clean_result case1 stop_broker
+all:  clean_result $(EMQ) $(WAKAAMA) mqtt_client start_broker clean_result case1 stop_broker
 	@echo "  "
 	@echo "  test complete"
 	@echo "  "
@@ -17,7 +16,7 @@ clean_result:
 start_broker:
 	-rm -f emq-relx/_rel/emqttd/log/*
 	-emq-relx/_rel/emqttd/bin/emqttd stop
-	sleep 1
+	sleep 3
 	emq-relx/_rel/emqttd/bin/emqttd start
 	sleep 1
 	emq-relx/_rel/emqttd/bin/emqttd_ctl plugins load emq_lwm2m
@@ -28,9 +27,9 @@ stop_broker:
 	
 
 case1:
-	$(ANJAY_ROOT)/Anjay/output/bin/demo --server-uri coap://127.0.0.1:5783
-	sleep 1
-	
+	build_wakaama/lightclient -4 -n jXtestlwm2m &
+	python case1.py
+	ps aux|grep lightclient|awk '{print $$2}'|xargs kill -9
 
 
 	
@@ -58,13 +57,20 @@ $(EMQ):
 	make -C emq-relx -f Makefile
 	
 
-anjay: $(ANJAY)
-	@echo "build anjay"
+w:
+	cd build_wakaama && make
+
+$(WAKAAMA):
+	git clone https://github.com/eclipse/wakaama
+	-mkdir build_wakaama
+	cd build_wakaama && cmake ../wakaama/examples/lightclient && make
 	
-$(ANJAY):
-	-mkdir $(ANJAY_ROOT)
-	cd $(ANJAY_ROOT) && git clone https://github.com/AVSystem/Anjay.git
-	cd $(ANJAY_ROOT)/Anjay && git submodule update --init && cmake . -DDTLS_BACKEND="" && make -j
+	
+mqtt_client: paho.mqtt.python/src/paho
+	git clone https://github.com/eclipse/paho.mqtt.python.git
+	mv paho.mqtt.python/src/paho ./
+	rm -rf paho.mqtt.python
+	
 	
 r: rebuild_emq
 	# r short for rebuild_emq
@@ -92,7 +98,8 @@ clean: clean_result
 	-rm -f client/*.exe
 	-rm -f client/*.o
 	-rm -rf emq-relx
-	-rm -rf $(ANJAY_ROOT)/Anjay
+	-rm -rf build_wakaama
+	-rm -rf wakaama
 	
 	
 	

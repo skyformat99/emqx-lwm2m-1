@@ -120,7 +120,8 @@ handle_info({dispatch_command, CoapRequest, Ref}, _ObState) ->
     ?LOG(debug, "dispatch_command CoapRequest=~p, Ref=~p", [CoapRequest, Ref]),
     {send_request, CoapRequest, Ref};
 
-handle_info({coap_response, ChId, _Channel, Ref, #coap_message{method = Method, payload = Payload, options = Options}}, ObState) ->
+handle_info({coap_response, ChId, _Channel, Ref, Msg=#coap_message{method = Method, payload = Payload, options = Options}}, ObState) ->
+    ?LOG(debug, "receive coap response from device ~p", [Msg]),
     DataFormat = data_format(Options),
     emq_lwm2m_mqtt_adapter:publish(ChId, Method, Payload, DataFormat, Ref),
     {noreply, ObState};
@@ -137,12 +138,21 @@ parse_query(InputQuery) ->
 
 parse_query([], Query=#lwm2m_query{}) ->
     Query;
+parse_query(["lt="++Rest|T], Query=#lwm2m_query{}) ->
+    parse_query(T, Query#lwm2m_query{life_time = list_to_integer(Rest)});
+parse_query(["lwm2m="++Rest|T], Query=#lwm2m_query{}) ->
+    parse_query(T, Query#lwm2m_query{lwm2m_ver = list_to_binary(Rest)});
+parse_query(["ep="++Rest|T], Query=#lwm2m_query{}) ->
+    parse_query(T, Query#lwm2m_query{epn = list_to_binary(Rest)});
 parse_query([<<$e, $p, $=, Rest/binary>>|T], Query=#lwm2m_query{}) ->
     parse_query(T, Query#lwm2m_query{epn = Rest});
 parse_query([<<$l, $t, $=, Rest/binary>>|T], Query=#lwm2m_query{}) ->
     parse_query(T, Query#lwm2m_query{life_time = binary_to_integer(Rest)});
 parse_query([<<$l, $w, $m, $2, $m, $=, Rest/binary>>|T], Query=#lwm2m_query{}) ->
-    parse_query(T, Query#lwm2m_query{lwm2m_ver = Rest}).
+    parse_query(T, Query#lwm2m_query{lwm2m_ver = Rest});
+parse_query([Unknown|T], Query) ->
+    ?LOG(debug, "parse_query ignore unknown query ~p", [Unknown]),
+    parse_query(T, Query).
 
 data_format([]) ->
     <<"text/plain">>;
