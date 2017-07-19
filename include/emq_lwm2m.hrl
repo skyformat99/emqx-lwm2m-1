@@ -30,6 +30,7 @@
 -define(MQ_ERROR,              <<"Error">>).
 -define(MQ_RESULT,             <<"Result">>).
 
+-define(ERR_NO_XML, <<"No XML Definition">>).
 
 
 -define(LWM2M_FORMAT_PLAIN_TEXT, 0).

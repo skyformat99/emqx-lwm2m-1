@@ -29,8 +29,7 @@ stop_broker:
 case1:
 	build_wakaama/lightclient -4 -n jXtestlwm2m &
 	python case1.py
-	ps aux|grep lightclient|awk '{print $$2}'|xargs kill -9
-
+	-ps aux|grep lightclient|awk '{print $$2}'|xargs kill -2
 
 	
 $(EMQ):
@@ -55,7 +54,8 @@ $(EMQ):
 	@echo "start building ..."
 	python insert_lwm2m_plugin.py
 	make -C emq-relx -f Makefile
-	
+	-mkdir emq-relx/_rel/emqttd/etc/lwm2m_xml
+	cp -f ../test/xml/LWM2M_Device-v1_0.xml  emq-relx/_rel/emqttd/etc/lwm2m_xml/
 
 w:
 	cd build_wakaama && cmake -DCMAKE_BUILD_TYPE=Debug ../wakaama/examples/lightclient && make

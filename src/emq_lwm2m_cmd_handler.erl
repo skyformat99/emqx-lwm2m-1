@@ -80,19 +80,19 @@ coap_read_response_to_mqtt_payload({ok, content}, CoapPayload, Format, Ref) ->
 
 coap_read_response_to_mqtt_payload2(CoapPayload, <<"text/plain">>, Ref=#{?MQ_BASENAME:=BaseName}) ->
     case catch emq_lwm2m_json:text_to_json(BaseName, CoapPayload) of
-        {'EXIT',{no_xml_definition, _}} -> make_error(Ref, <<"No XML Definition">>);
-        Result                          -> make_response(Ref, Result)
+        {'EXIT', {no_xml_definition, _}} -> make_error(Ref, ?ERR_NO_XML);
+        Result                           -> make_response(Ref, Result)
     end;
 coap_read_response_to_mqtt_payload2(CoapPayload, <<"application/octet-stream">>, Ref=#{?MQ_BASENAME:=BaseName}) ->
     case catch emq_lwm2m_json:opaque_to_json(BaseName, CoapPayload) of
-        {'EXIT',{no_xml_definition, _}} -> make_error(Ref, <<"No XML Definition">>);
-        Result                          -> make_response(Ref, Result)
+        {'EXIT', {no_xml_definition, _}} -> make_error(Ref, ?ERR_NO_XML);
+        Result                           -> make_response(Ref, Result)
     end;
 coap_read_response_to_mqtt_payload2(CoapPayload, <<"application/vnd.oma.lwm2m+tlv">>, Ref=#{?MQ_BASENAME:=BaseName}) ->
     Decode = emq_lwm2m_tlv:parse(CoapPayload),
     case catch emq_lwm2m_json:tlv_to_json(BaseName, Decode) of
-        no_xml_definition -> make_error(Ref, <<"No XML Definition">>);
-        Result -> make_response(Ref, Result)
+        {'EXIT', {no_xml_definition, _}} -> make_error(Ref, ?ERR_NO_XML);
+        Result                           -> make_response(Ref, Result)
     end;
 coap_read_response_to_mqtt_payload2(CoapPayload, <<"application/vnd.oma.lwm2m+json">>, Ref) ->
     Result = jsx:decode(CoapPayload),
@@ -124,6 +124,7 @@ coap_observe_response_to_mqtt_payload({ok, content}, CoapPayload, Format, Ref) -
     coap_read_response_to_mqtt_payload2(CoapPayload, Format, Ref).
 
 make_response(Ref=#{}, Value) ->
+    ?LOG(debug, "make_response  Ref=~p, Error=~p", [Ref, Value]),
     jsx:encode(#{
                     ?MQ_COMMAND_ID  => maps:get(?MQ_COMMAND_ID, Ref),
                     ?MQ_COMMAND     => maps:get(?MQ_COMMAND, Ref),
@@ -131,6 +132,7 @@ make_response(Ref=#{}, Value) ->
                 }).
 
 make_error(Ref=#{}, Error) ->
+    ?LOG(debug, "make_error  Ref=~p, Error=~p", [Ref, Error]),
     jsx:encode(#{
                     ?MQ_COMMAND_ID  => maps:get(?MQ_COMMAND_ID, Ref),
                     ?MQ_COMMAND     => maps:get(?MQ_COMMAND, Ref),
