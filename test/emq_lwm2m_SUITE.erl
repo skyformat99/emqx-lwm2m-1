@@ -1219,7 +1219,7 @@ get_observe([{_, _}|T]) ->
 join_path([], Acc) ->
     Acc;
 join_path([H|T], Acc) ->
-    join_path(T, <<Acc/binary, H/binary>>).
+    join_path(T, <<Acc/binary, $/, H/binary>>).
 
 
 
