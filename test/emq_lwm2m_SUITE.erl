@@ -29,7 +29,7 @@
 
 all() -> [case01_register, case02_update_deregister, case03_register_wrong_version,
     case04_register_and_lifetime_timeout, case05_register_wrong_epn, case06_register_wrong_lifetime,
-    case10_read, case11_read_object_tlv, case11_read_object_json, case12_read_resource_opaque,
+    case10_read, case11_read_object_tlv, case11_read_object_json, case12_read_resource_opaque, case13_read_no_xml,
     case20_write, case21_write_object, case22_write_error,
     case30_execute, case31_execute_error,
     case40_discover,
@@ -523,6 +523,68 @@ case12_read_resource_opaque(_Config) ->
                                 ?MQ_RESULT              => #{   bn=><<"/3/0/8">>,
                                                                 e=>[#{sv=>base64:encode(Opaque)}]
                                                             }
+                            }),
+    ?assertEqual({PubTopic, ReadResult}, test_mqtt_broker:get_published_msg()),
+
+    test_close_udp_socket(UdpSock),
+    ok = application:stop(emq_lwm2m),
+    ok = application:stop(lwm2m_coap),
+    test_mqtt_broker:stop().
+
+
+
+case13_read_no_xml(_Config) ->
+    application:set_env(?APP, port, ?PORT),
+    application:set_env(?APP, xml_dir, "../../test/xml"),
+    test_mqtt_broker:start_link(),
+    {ok, _Started} = application:ensure_all_started(emq_lwm2m),
+    timer:sleep(100),
+
+    % step 1, device register ...
+    Epn = "urn:oma:lwm2m:oma:3",
+    MsgId1 = 15,
+    {ok, UdpSock} = test_open_udp_socket(),
+    test_send_coap_request( UdpSock,
+                            post,
+                            sprintf("coap://127.0.0.1:~b/rd?ep=~s&lt=345&lwm2m=1", [?PORT, Epn]),
+                            #coap_content{format = <<"text/plain">>, payload = <<"</1>, </2>, </3/0>, </4>, </5>">>},
+                            [],
+                            MsgId1),
+    #coap_message{method = Method1, payload=Payload1} = test_recv_coap_response(UdpSock),
+    ?assertEqual({ok,created}, Method1),
+    ?assertMatch(<<"/rd/", _Rest/binary>>, Payload1),
+    timer:sleep(50),
+    SubTopic = list_to_binary("lwm2m/"++Epn++"/command"),
+    ?assertEqual([SubTopic], test_mqtt_broker:get_subscrbied_topics()),
+
+
+    % step2,  send a READ command to device
+    CmdId = 206,
+    CommandTopic = <<"lwm2m/", (list_to_binary(Epn))/binary, "/command">>,
+    Command =   #{
+                    ?MQ_COMMAND_ID         => CmdId,
+                    ?MQ_COMMAND            => <<"Read">>,
+                    ?MQ_BASENAME           => <<"/9723/0/0">>
+                },
+    CommandJson = jsx:encode(Command),
+    ?LOGT("CommandJson=~p", [CommandJson]),
+    test_mqtt_broker:dispatch(CommandTopic, CommandJson, CommandTopic),
+    timer:sleep(50),
+    Request2 = test_recv_coap_request(UdpSock),
+    #coap_message{method = Method2, options=Options2, payload=Payload2} = Request2,
+    Path2 = get_coap_path(Options2),
+    ?assertEqual(get, Method2),
+    ?assertEqual(<<"/9723/0/0">>, Path2),
+    ?assertEqual(<<>>, Payload2),
+    timer:sleep(50),
+
+    test_send_coap_response(UdpSock, "127.0.0.1", ?PORT, {ok, content}, #coap_content{format = <<"text/plain">>, payload = <<"EMQ">>}, Request2, false),
+    timer:sleep(100),
+
+    PubTopic = list_to_binary("lwm2m/"++Epn++"/response"),
+    ReadResult = jsx:encode(#{  ?MQ_COMMAND_ID   => CmdId,
+                                ?MQ_COMMAND      => <<"Read">>,
+                                ?MQ_ERROR        => <<"No XML Definition">>
                             }),
     ?assertEqual({PubTopic, ReadResult}, test_mqtt_broker:get_published_msg()),
 
