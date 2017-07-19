@@ -17,3 +17,8 @@
   {datatype, string}
 ]}.
 
+{mapping, "lwm2m.xml_dir", "emq_lwm2m.xml_dir", [
+  {datatype, string}
+]}.
+
+
