@@ -1,11 +1,11 @@
 
-.PHONY: clean, clean_result, start_broker  stop_broker  case1 case2
+.PHONY: clean, clean_result, start_broker  stop_broker  case1 case2 case3
 
 
 EMQ    = emq-relx/relx.config
 WAKAAMA  = build_wakaama/lightclient
 
-all:  clean_result $(EMQ) $(WAKAAMA) mqtt_client start_broker clean_result case1 case2 stop_broker
+all:  clean_result $(EMQ) $(WAKAAMA) mqtt_client start_broker clean_result case1 case2 case3 stop_broker
 	@echo "  "
 	@echo "  test complete"
 	@echo "  "
@@ -34,6 +34,11 @@ case1:
 case2:
 	-build_wakaama/lightclient -4 -n jXtestlwm2m &
 	python case2.py
+	-ps aux|grep lightclient|awk '{print $$2}'|xargs kill -2
+
+case3:
+	-build_wakaama/lightclient -4 -n jXtestlwm2m &
+	python case3.py
 	-ps aux|grep lightclient|awk '{print $$2}'|xargs kill -2
 	
 	
@@ -108,7 +113,7 @@ clean: clean_result
 	
 	
 	
-lazy: clean_result start_broker case2 stop_broker
+lazy: clean_result start_broker case3 stop_broker
 	# custom your command here
 	@echo "you are so lazy"
 	
