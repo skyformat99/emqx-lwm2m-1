@@ -21,7 +21,7 @@ def change_makefile():
         data = data.replace("{emq_sn, load},", "{emq_sn, load},\n{emq_lwm2m, load},")
         data = data.replace('{template, "rel/conf/emq.conf", "etc/emq.conf"},', \
                 '{template, "rel/conf/emq.conf", "etc/emq.conf"},'+  \
-                '\n    {template, "rel/conf/plugins/emq_coap.conf", "etc/plugins/emq_coap.conf"},'+  \
+                '\n    {template, "rel/conf/plugins/emq_lwm2m.conf", "etc/plugins/emq_lwm2m.conf"},'+  \
                 '\n    {copy, "deps/emq_lwm2m/lwm2m_xml", "etc/"},')
         f.write(data)
         f.close()
