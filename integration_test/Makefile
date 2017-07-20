@@ -64,8 +64,8 @@ $(EMQ):
 	@echo "start building ..."
 	python insert_lwm2m_plugin.py
 	make -C emq-relx -f Makefile
-	-mkdir emq-relx/_rel/emqttd/etc/lwm2m_xml
-	cp -f ../test/xml/LWM2M_Device-v1_0.xml  emq-relx/_rel/emqttd/etc/lwm2m_xml/
+	-cp -rf ../lwm2m_xml  emq-relx/_rel/emqttd/etc/
+
 
 w:
 	cd build_wakaama && cmake -DCMAKE_BUILD_TYPE=Debug ../wakaama/examples/lightclient && make
