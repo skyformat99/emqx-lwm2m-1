@@ -223,7 +223,6 @@ case05_register_wrong_epn(_Config) ->
     % ----------------------------------------
     % REGISTER command
     % ----------------------------------------
-    Epn = "urn:oma:lwm2m:oma:3",
     MsgId = 12,
     {ok, UdpSock} = test_open_udp_socket(),
     test_send_coap_request( UdpSock,
@@ -278,7 +277,7 @@ case06_register_wrong_lifetime(_Config) ->
 
 case10_read(_Config) ->
     application:set_env(?APP, port, ?PORT),
-    application:set_env(?APP, xml_dir, "../../test/xml"),
+    application:set_env(?APP, xml_dir, "../../lwm2m_xml"),
     test_mqtt_broker:start_link(),
     {ok, _Started} = application:ensure_all_started(emq_lwm2m),
     timer:sleep(100),
@@ -341,7 +340,7 @@ case10_read(_Config) ->
 
 case11_read_object_tlv(_Config) ->
     application:set_env(?APP, port, ?PORT),
-    application:set_env(?APP, xml_dir, "../../test/xml"),
+    application:set_env(?APP, xml_dir, "../../lwm2m_xml"),
     test_mqtt_broker:start_link(),
     {ok, _Started} = application:ensure_all_started(emq_lwm2m),
     timer:sleep(100),
@@ -407,7 +406,7 @@ case11_read_object_tlv(_Config) ->
 
 case11_read_object_json(_Config) ->
     application:set_env(?APP, port, ?PORT),
-    application:set_env(?APP, xml_dir, "../../test/xml"),
+    application:set_env(?APP, xml_dir, "../../lwm2m_xml"),
     test_mqtt_broker:start_link(),
     {ok, _Started} = application:ensure_all_started(emq_lwm2m),
     timer:sleep(100),
@@ -472,7 +471,7 @@ case11_read_object_json(_Config) ->
 
 case12_read_resource_opaque(_Config) ->
     application:set_env(?APP, port, ?PORT),
-    application:set_env(?APP, xml_dir, "../../test/xml"),
+    application:set_env(?APP, xml_dir, "../../lwm2m_xml"),
     test_mqtt_broker:start_link(),
     {ok, _Started} = application:ensure_all_started(emq_lwm2m),
     timer:sleep(100),
@@ -535,7 +534,7 @@ case12_read_resource_opaque(_Config) ->
 
 case13_read_no_xml(_Config) ->
     application:set_env(?APP, port, ?PORT),
-    application:set_env(?APP, xml_dir, "../../test/xml"),
+    application:set_env(?APP, xml_dir, "../../lwm2m_xml"),
     test_mqtt_broker:start_link(),
     {ok, _Started} = application:ensure_all_started(emq_lwm2m),
     timer:sleep(100),
@@ -596,7 +595,7 @@ case13_read_no_xml(_Config) ->
 
 case20_write(_Config) ->
     application:set_env(?APP, port, ?PORT),
-    application:set_env(?APP, xml_dir, "../../test/xml"),
+    application:set_env(?APP, xml_dir, "../../lwm2m_xml"),
     test_mqtt_broker:start_link(),
     {ok, _Started} = application:ensure_all_started(emq_lwm2m),
     timer:sleep(100),
@@ -656,7 +655,7 @@ case20_write(_Config) ->
 
 case21_write_object(_Config) ->
     application:set_env(?APP, port, ?PORT),
-    application:set_env(?APP, xml_dir, "../../test/xml"),
+    application:set_env(?APP, xml_dir, "../../lwm2m_xml"),
     test_mqtt_broker:start_link(),
     {ok, _Started} = application:ensure_all_started(emq_lwm2m),
     timer:sleep(100),
@@ -721,7 +720,7 @@ case21_write_object(_Config) ->
 
 case22_write_error(_Config) ->
     application:set_env(?APP, port, ?PORT),
-    application:set_env(?APP, xml_dir, "../../test/xml"),
+    application:set_env(?APP, xml_dir, "../../lwm2m_xml"),
     test_mqtt_broker:start_link(),
     {ok, _Started} = application:ensure_all_started(emq_lwm2m),
     timer:sleep(100),
@@ -782,7 +781,7 @@ case22_write_error(_Config) ->
 
 case30_execute(_Config) ->
     application:set_env(?APP, port, ?PORT),
-    application:set_env(?APP, xml_dir, "../../test/xml"),
+    application:set_env(?APP, xml_dir, "../../lwm2m_xml"),
     test_mqtt_broker:start_link(),
     {ok, _Started} = application:ensure_all_started(emq_lwm2m),
     timer:sleep(100),
@@ -843,7 +842,7 @@ case30_execute(_Config) ->
 
 case31_execute_error(_Config) ->
     application:set_env(?APP, port, ?PORT),
-    application:set_env(?APP, xml_dir, "../../test/xml"),
+    application:set_env(?APP, xml_dir, "../../lwm2m_xml"),
     test_mqtt_broker:start_link(),
     {ok, _Started} = application:ensure_all_started(emq_lwm2m),
     timer:sleep(100),
@@ -904,7 +903,7 @@ case31_execute_error(_Config) ->
 
 case40_discover(_Config) ->
     application:set_env(?APP, port, ?PORT),
-    application:set_env(?APP, xml_dir, "../../test/xml"),
+    application:set_env(?APP, xml_dir, "../../lwm2m_xml"),
     test_mqtt_broker:start_link(),
     {ok, _Started} = application:ensure_all_started(emq_lwm2m),
     timer:sleep(100),
@@ -972,7 +971,7 @@ case40_discover(_Config) ->
 
 case50_write_attribute(_Config) ->
     application:set_env(?APP, port, ?PORT),
-    application:set_env(?APP, xml_dir, "../../test/xml"),
+    application:set_env(?APP, xml_dir, "../../lwm2m_xml"),
     test_mqtt_broker:start_link(),
     {ok, _Started} = application:ensure_all_started(emq_lwm2m),
     timer:sleep(100),
@@ -1044,7 +1043,7 @@ case50_write_attribute(_Config) ->
 
 case60_observe(_Config) ->
     application:set_env(?APP, port, ?PORT),
-    application:set_env(?APP, xml_dir, "../../test/xml"),
+    application:set_env(?APP, xml_dir, "../../lwm2m_xml"),
     test_mqtt_broker:start_link(),
     {ok, _Started} = application:ensure_all_started(emq_lwm2m),
     timer:sleep(100),

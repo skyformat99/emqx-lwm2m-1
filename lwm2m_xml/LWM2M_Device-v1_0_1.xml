@@ -4,18 +4,18 @@
 FILE INFORMATION
 
 OMA Permanent Document
-   File: OMA-SUP-XML_LWM2M_Device-V1_0-20170208-A
+   File: OMA-SUP-XML_LWM2M_Device-V1_0_1-20170704-A
    Type: xml
 
 Public Reachable Information
    Path: http://www.openmobilealliance.org/tech/profiles
-   Name: LWM2M_Device-v1_0.xml
+   Name: LWM2M_Device-v1_0_1.xml
 
 NORMATIVE INFORMATION
 
   Information about this file can be found in the latest revision of
 
-    OMA-TS-LightweightM2M-V1_0
+    OMA-TS-LightweightM2M-V1_0_1
 
   This is available at http://www.openmobilealliance.org/
 
@@ -24,6 +24,7 @@ NORMATIVE INFORMATION
 CHANGE HISTORY
 
 08022017 Status changed to Approved by TP, TP Ref # OMA-TP-2017-0009-INP_LightweightM2M-V1_0_ERP_for_Final_Approval
+04072017 Status changed to Approved by TP, TP Ref # OMA-TP-2017-0029R01-INP_LightweightM2M_V1.0.1_ERP_for_Final_Approval_Notification
 
 LEGAL DISCLAIMER
 
@@ -205,7 +206,7 @@ The same Resource Instance ID MUST be used to associate a given Power Source (Re
 7=IP connectivity failure
 8=Peripheral malfunction
 
-When the single Device Object Instance is initiated, there is only one error code Resource Instance whose value is equal to 0 that means no error. When the first error happens, the LwM2M Client changes error code Resource Instance to any non-zero value to indicate the error type. When any other error happens, a new error code Resource Instance is created.
+When the single Device Object Instance is initiated, there is only one error code Resource Instance whose value is equal to 0 that means no error. When the first error happens, the LwM2M Client changes error code Resource Instance to any non-zero value to indicate the error type. When any other error happens, a new error code Resource Instance is created. When an error associated with a Resource Instance is no longer present, that Resource Instance is deleted. When the single existing error is no longer present, the LwM2M Client returns to the original no error state where Instance 0 has value 0.
 This error code Resource MAY be observed by the LwM2M Server. How to deal with LwM2M Client’s error report depends on the policy of the LwM2M Server.]]></Description>
       </Item>
       <Item ID="12">
@@ -216,7 +217,7 @@ This error code Resource MAY be observed by the LwM2M Server. How to deal with L
         <Type></Type>
         <RangeEnumeration></RangeEnumeration>
         <Units></Units>
-        <Description><![CDATA[Delete all error code Resource Instances and create only one zero-value error code that implies no error.]]></Description>
+        <Description><![CDATA[Delete all error code Resource Instances and create only one zero-value error code that implies no error, then re-evaluate all error conditions and update and create Resources Instances to capture all current error conditions.]]></Description>
       </Item>
       <Item ID="13">
         <Name>Current Time</Name>
