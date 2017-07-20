@@ -6,7 +6,11 @@ LWM2M Gateway for the EMQ Broker
 
 LWM2M is Lightweight Machine to Machine protocol. Its standard can be found [here](http://www.openmobilealliance.org/release/LightweightM2M).
 
-Users is able to send LWM2M commands(READ/WRITE/EXECUTE/...) and get LWM2M response in mqtt way. Emq_lwm2m transforms data between mqtt and LWM2M protocol.
+User is able to send LWM2M commands(READ/WRITE/EXECUTE/...) and get LWM2M response in mqtt way. Emq_lwm2m transforms data between mqtt and LWM2M protocol.
+
+Emq_lwm2m needs object definitions to parse data from lwm2m devices. Object definitions are declared by organisitions in XML format, you can find those XMLs [here](http://www.openmobilealliance.org/wp/OMNA/LwM2M/LwM2MRegistry.html). Please download required XMLs and put them into directory specified by lwm2m.xml_dir. If no associated object definition is found, response from device will be discarded and report an error message in system log.
+
+
 
 
 Configure Plugin
