@@ -40,7 +40,7 @@ end_per_suite(Config) ->
 
 
 case01(_Config) ->
-    application:set_env(?APP, xml_dir, "../../test/xml"),
+    application:set_env(?APP, xml_dir, "../../lwm2m_xml"),
     emq_lwm2m_xml_object_db:start_link(),
     Input = [
         #{tlv_resource_with_value => 16#00, value => <<"Open Mobile Alliance">>}
@@ -54,7 +54,7 @@ case01(_Config) ->
 
 
 case02(_Config) ->
-    application:set_env(?APP, xml_dir, "../../test/xml"),
+    application:set_env(?APP, xml_dir, "../../lwm2m_xml"),
     emq_lwm2m_xml_object_db:start_link(),
     Input = [
                 #{tlv_resource_with_value => 16#00, value => <<"Open Mobile Alliance">>},
@@ -75,7 +75,7 @@ case02(_Config) ->
 
 
 case03(_Config) ->
-    application:set_env(?APP, xml_dir, "../../test/xml"),
+    application:set_env(?APP, xml_dir, "../../lwm2m_xml"),
     emq_lwm2m_xml_object_db:start_link(),
     Input = [
                 #{
@@ -99,7 +99,7 @@ case03(_Config) ->
 
 
 case04_two_multiple_resource(_Config) ->
-    application:set_env(?APP, xml_dir, "../../test/xml"),
+    application:set_env(?APP, xml_dir, "../../lwm2m_xml"),
     emq_lwm2m_xml_object_db:start_link(),
     Input = [
         #{
@@ -133,7 +133,7 @@ case04_two_multiple_resource(_Config) ->
 
 
 case05_two_multiple_resource_three_resource_with_value(_Config) ->
-    application:set_env(?APP, xml_dir, "../../test/xml"),
+    application:set_env(?APP, xml_dir, "../../lwm2m_xml"),
     emq_lwm2m_xml_object_db:start_link(),
     Input = [
                 #{tlv_resource_with_value => 16#00, value => <<"Open Mobile Alliance">>},
@@ -173,7 +173,7 @@ case05_two_multiple_resource_three_resource_with_value(_Config) ->
 
 
 case06_one_object_instance(_Config) ->
-    application:set_env(?APP, xml_dir, "../../test/xml"),
+    application:set_env(?APP, xml_dir, "../../lwm2m_xml"),
     emq_lwm2m_xml_object_db:start_link(),
     Input = [
                 #{tlv_resource_with_value => 16#00, value => <<"Open Mobile Alliance">>},
@@ -214,7 +214,7 @@ case06_one_object_instance(_Config) ->
 
 
 case07_two_object_instance(_Config) ->
-    application:set_env(?APP, xml_dir, "../../test/xml"),
+    application:set_env(?APP, xml_dir, "../../lwm2m_xml"),
     emq_lwm2m_xml_object_db:start_link(),
     Input = [
         #{
