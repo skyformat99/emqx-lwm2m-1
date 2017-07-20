@@ -30,7 +30,12 @@
 -define(MQ_ERROR,              <<"Error">>).
 -define(MQ_RESULT,             <<"Result">>).
 
--define(ERR_NO_XML, <<"No XML Definition">>).
+-define(ERR_NO_XML,             <<"No XML Definition">>).
+-define(ERR_NOT_ACCEPTABLE,     <<"Not Acceptable">>).
+-define(ERR_METHOD_NOT_ALLOWED, <<"Method Not Allowed">>).
+-define(ERR_NOT_FOUND,          <<"Not Found">>).
+-define(ERR_UNAUTHORIZED,       <<"Unauthorized">>).
+-define(ERR_BAD_REQUEST,        <<"Bad Request">>).
 
 
 -define(LWM2M_FORMAT_PLAIN_TEXT, 0).

@@ -140,15 +140,16 @@ make_error(Ref=#{}, Error) ->
                 }).
 
 error_code(not_acceptable) ->
-    <<"Not Acceptable">>;
+    ?ERR_NOT_ACCEPTABLE;
 error_code(method_not_allowed) ->
-    <<"Method Not Allowed">>;
+    ?ERR_METHOD_NOT_ALLOWED;
 error_code(not_found) ->
-    <<"Not Found">>;
+    ?ERR_NOT_FOUND;
 error_code(uauthorized) ->
-    <<"Unauthorized">>;
+    ?ERR_UNAUTHORIZED;
 error_code(bad_request) ->
-    <<"Bad Request">>.
+    ?ERR_BAD_REQUEST.
+
 
 path_list(Path) ->
     case binary:split(Path, [<<$/>>], [global]) of

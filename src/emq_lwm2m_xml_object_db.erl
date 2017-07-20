@@ -109,9 +109,12 @@ code_change(_OldVsn, State, _Extra) ->
 %%--------------------------------------------------------------------
 %% Internal functions
 %%--------------------------------------------------------------------
-
 load(BaseDir) ->
-    AllXmlFiles = filelib:wildcard(BaseDir++"/*.xml"),
+    Wild = case lists:last(BaseDir) == $/ of
+               true  -> BaseDir++"*.xml";
+               false -> BaseDir++"/*.xml"
+           end,
+    AllXmlFiles = filelib:wildcard(Wild),
     load_loop(AllXmlFiles).
 
 load_loop([]) ->
