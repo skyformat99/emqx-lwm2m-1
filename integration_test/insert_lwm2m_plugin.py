@@ -19,8 +19,14 @@ def change_makefile():
     if data.find("emq_lwm2m") < 0:
         f = open("emq-relx/relx.config", "wb")
         data = data.replace("{emq_sn, load},", "{emq_sn, load},\n{emq_lwm2m, load},")
+        data = data.replace('{template, 'rel/conf/emq.conf", "etc/emq.conf"},', 
+                '{template, "rel/conf/emq.conf", "etc/emq.conf"},'+
+                '\n    {template, "rel/conf/plugins/emq_coap.conf", "etc/plugins/emq_coap.conf"},'+
+                '\n    {copy, "deps/emq_lwm2m/lwm2m_xml", "etc/"},')
         f.write(data)
         f.close()
+        
+        
         
 def change_lwm2m_config():
     f = open("emq-relx/deps/emq_lwm2m/etc/emq_lwm2m.conf", "rb")
