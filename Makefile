@@ -9,7 +9,7 @@ dep_jsx        = git https://github.com/talentdeficit/jsx
 
 
 BUILD_DEPS = emqttd cuttlefish
-dep_emqttd     = git https://github.com/emqtt/emqttd emq22
+dep_emqttd     = git https://github.com/emqtt/emqttd develop
 dep_cuttlefish = git https://github.com/emqtt/cuttlefish
 
 ERLC_OPTS += +debug_info
