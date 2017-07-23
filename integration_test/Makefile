@@ -4,8 +4,9 @@
 
 EMQ    = emq-relx/relx.config
 WAKAAMA  = build_wakaama/lightclient
+PAHO_PYTHON = paho/mqtt/client.py
 
-all:  clean_result $(EMQ) $(WAKAAMA) mqtt_client start_broker clean_result case1 case2 case3 stop_broker
+all:  clean_result $(EMQ) $(WAKAAMA) $(PAHO_PYTHON) start_broker clean_result case1 case2 case3 stop_broker
 	@echo "  "
 	@echo "  test complete"
 	@echo "  "
@@ -76,7 +77,10 @@ $(WAKAAMA):
 	cd build_wakaama && cmake -DCMAKE_BUILD_TYPE=Debug ../wakaama/examples/lightclient && make
 	
 	
-mqtt_client: paho.mqtt.python/src/paho
+mqtt: $(PAHO_PYTHON)
+	# short for paho python client
+
+$(PAHO_PYTHON):
 	git clone https://github.com/eclipse/paho.mqtt.python.git
 	mv paho.mqtt.python/src/paho ./
 	rm -rf paho.mqtt.python
