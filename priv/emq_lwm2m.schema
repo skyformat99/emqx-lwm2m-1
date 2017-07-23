@@ -3,12 +3,6 @@
 ]}.
 
 
-{mapping, "lwm2m.keepalive", "emq_lwm2m.keepalive", [
-  {default, "120s"},
-  {datatype, {duration, s}}
-]}.
-
-
 {mapping, "lwm2m.keyfile", "emq_lwm2m.keyfile", [
   {datatype, string}
 ]}.
