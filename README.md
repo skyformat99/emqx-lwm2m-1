@@ -20,15 +20,12 @@ File: etc/emq_lwm2m.conf
 
 ```
 lwm2m.port = 5783
-lwm2m.keepalive = 120
 lwm2m.certfile = etc/certs/cert.pem
 lwm2m.keyfile = etc/certs/key.pem
 lwm2m.xml_dir =  etc/lwm2m_xml
 ```
 - lwm2m.port
   + UDP port for coap. The secured port will be (lwm2m.port+1).
-- lwm2m.keepalive
-  + Interval for keepalive, in seconds.
 - lwm2m.certfile
   + server certificate for DTLS
 - lwm2m.keyfile
