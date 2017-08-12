@@ -2,10 +2,11 @@ PROJECT = emq_lwm2m
 PROJECT_DESCRIPTION = LWM2M Gateway
 PROJECT_VERSION = 0.1
 
-DEPS = lager lwm2m_coap jsx
+DEPS = lager lwm2m_coap jsx clique
 dep_lager      = git https://github.com/basho/lager
 dep_lwm2m_coap = git https://github.com/grutabow/lwm2m-coap
 dep_jsx        = git https://github.com/talentdeficit/jsx
+dep_clique     = git https://github.com/emqtt/clique
 
 
 BUILD_DEPS = emqttd cuttlefish
