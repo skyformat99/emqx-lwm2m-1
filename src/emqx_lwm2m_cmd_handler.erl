@@ -14,11 +14,11 @@
 %% limitations under the License.
 %%--------------------------------------------------------------------
 
--module(emq_lwm2m_cmd_handler).
+-module(emqx_lwm2m_cmd_handler).
 
 -author("Feng Lee <feng@emqtt.io>").
 
--include("emq_lwm2m.hrl").
+-include("emqx_lwm2m.hrl").
 -include_lib("lwm2m_coap/include/coap.hrl").
 
 -export([mqtt_payload_to_coap_request/1, coap_response_to_mqtt_payload/4]).
@@ -33,8 +33,8 @@ mqtt_payload_to_coap_request(InputCmd = #{?MQ_COMMAND := <<"Read">>, ?MQ_BASENAM
 mqtt_payload_to_coap_request(InputCmd = #{?MQ_COMMAND := <<"Write">>, ?MQ_VALUE := Value}) ->
     #{<<"bn">>:=Path} = Value,
     {Method, PathList} = path_list(Path),
-    TlvData = emq_lwm2m_json:json_to_tlv(Value),
-    Payload = emq_lwm2m_tlv:encode(TlvData),
+    TlvData = emqx_lwm2m_json:json_to_tlv(Value),
+    Payload = emqx_lwm2m_tlv:encode(TlvData),
     CoapRequest = lwm2m_coap_message:request(con, Method, Payload, [{uri_path, PathList}, {content_format, <<"application/vnd.oma.lwm2m+tlv">>}]),
     {CoapRequest, InputCmd};
 mqtt_payload_to_coap_request(InputCmd = #{?MQ_COMMAND := <<"Execute">>, ?MQ_BASENAME := Path}) ->
@@ -79,18 +79,18 @@ coap_read_response_to_mqtt_payload({ok, content}, CoapPayload, Format, Ref) ->
     coap_read_response_to_mqtt_payload2(CoapPayload, Format, Ref).
 
 coap_read_response_to_mqtt_payload2(CoapPayload, <<"text/plain">>, Ref=#{?MQ_BASENAME:=BaseName}) ->
-    case catch emq_lwm2m_json:text_to_json(BaseName, CoapPayload) of
+    case catch emqx_lwm2m_json:text_to_json(BaseName, CoapPayload) of
         {'EXIT', {no_xml_definition, _}} -> make_error(Ref, ?ERR_NO_XML);
         Result                           -> make_response(Ref, Result)
     end;
 coap_read_response_to_mqtt_payload2(CoapPayload, <<"application/octet-stream">>, Ref=#{?MQ_BASENAME:=BaseName}) ->
-    case catch emq_lwm2m_json:opaque_to_json(BaseName, CoapPayload) of
+    case catch emqx_lwm2m_json:opaque_to_json(BaseName, CoapPayload) of
         {'EXIT', {no_xml_definition, _}} -> make_error(Ref, ?ERR_NO_XML);
         Result                           -> make_response(Ref, Result)
     end;
 coap_read_response_to_mqtt_payload2(CoapPayload, <<"application/vnd.oma.lwm2m+tlv">>, Ref=#{?MQ_BASENAME:=BaseName}) ->
-    Decode = emq_lwm2m_tlv:parse(CoapPayload),
-    case catch emq_lwm2m_json:tlv_to_json(BaseName, Decode) of
+    Decode = emqx_lwm2m_tlv:parse(CoapPayload),
+    case catch emqx_lwm2m_json:tlv_to_json(BaseName, Decode) of
         {'EXIT', {no_xml_definition, _}} -> make_error(Ref, ?ERR_NO_XML);
         Result                           -> make_response(Ref, Result)
     end;

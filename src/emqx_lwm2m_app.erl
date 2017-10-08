@@ -14,28 +14,27 @@
 %% limitations under the License.
 %%--------------------------------------------------------------------
 
--module(emq_lwm2m_app).
+-module(emqx_lwm2m_app).
 
 -author("Feng Lee <feng@emqtt.io>").
 
 -behaviour(application).
 -export([start/2, stop/1, prep_stop/1]).
 
--include("emq_lwm2m.hrl").
+-include("emqx_lwm2m.hrl").
 
 
 start(_Type, _Args) ->
     Port = application:get_env(?APP, port, 5783),
-    Pid = emq_lwm2m_sup:start_link(),
-    emq_lwm2m_coap_server:start(Port),
-    emq_lwm2m_config:register(),
+    Pid = emqx_lwm2m_sup:start_link(),
+    emqx_lwm2m_coap_server:start(Port),
+    emqx_lwm2m_cfg:register(),
     Pid.
 
 prep_stop(State) ->
-    emq_lwm2m_coap_server:stop(),
-    emq_lwm2m_config:unregister(),
+    emqx_lwm2m_coap_server:stop(),
+    emqx_lwm2m_config:unregister(),
     State.
-
 
 stop(_State) ->
     ok.

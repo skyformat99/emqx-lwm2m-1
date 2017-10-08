@@ -14,13 +14,13 @@
 %% limitations under the License.
 %%--------------------------------------------------------------------
 
--module(emq_lwm2m_tlv).
+-module(emqx_lwm2m_tlv).
 
 -author("Feng Lee <feng@emqtt.io>").
 
 -export([parse/1, encode/1]).
 
--include("emq_lwm2m.hrl").
+-include("emqx_lwm2m.hrl").
 
 -define(LOG(Level, Format, Args), lager:Level("LWM2M-TLV: " ++ Format, Args)).
 

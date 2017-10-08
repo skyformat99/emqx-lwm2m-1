@@ -1,4 +1,4 @@
-PROJECT = emq_lwm2m
+PROJECT = emqx_lwm2m
 PROJECT_DESCRIPTION = LWM2M Gateway
 PROJECT_VERSION = 0.1
 
@@ -9,8 +9,8 @@ dep_jsx        = git https://github.com/talentdeficit/jsx
 dep_clique     = git https://github.com/emqtt/clique
 
 
-BUILD_DEPS = emqttd cuttlefish
-dep_emqttd     = git https://github.com/emqtt/emqttd develop
+BUILD_DEPS = emqx cuttlefish
+dep_emqx     = git https://github.com/emqtt/emqttd X
 dep_cuttlefish = git https://github.com/emqtt/cuttlefish
 
 ERLC_OPTS += +debug_info
@@ -20,4 +20,4 @@ TEST_ERLC_OPTS += +'{parse_transform, lager_transform}'
 include erlang.mk
 
 app.config::
-	./deps/cuttlefish/cuttlefish -l info -e etc/ -c etc/emq_lwm2m.conf -i priv/emq_lwm2m.schema -d data
+	./deps/cuttlefish/cuttlefish -l info -e etc/ -c etc/emqx_lwm2m.conf -i priv/emqx_lwm2m.schema -d data

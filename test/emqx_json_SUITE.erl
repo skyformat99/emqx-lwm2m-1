@@ -14,13 +14,13 @@
 %% limitations under the License.
 %%--------------------------------------------------------------------
 
--module(emq_json_SUITE).
+-module(emqx_json_SUITE).
 
 -compile(export_all).
 
 -define(LOGT(Format, Args), lager:debug("TEST_SUITE: " ++ Format, Args)).
 
--include("emq_lwm2m.hrl").
+-include("emqx_lwm2m.hrl").
 -include_lib("lwm2m_coap/include/coap.hrl").
 -include_lib("eunit/include/eunit.hrl").
 
@@ -41,27 +41,27 @@ end_per_suite(Config) ->
 
 case01(_Config) ->
     application:set_env(?APP, xml_dir, "../../lwm2m_xml"),
-    emq_lwm2m_xml_object_db:start_link(),
+    emqx_lwm2m_xml_object_db:start_link(),
     Input = [
         #{tlv_resource_with_value => 16#00, value => <<"Open Mobile Alliance">>}
     ],
-    R = emq_lwm2m_json:tlv_to_json(<<"/3/0/0">>, Input),
+    R = emqx_lwm2m_json:tlv_to_json(<<"/3/0/0">>, Input),
     Exp = #{bn=><<"/3/0/0">>,e=>[#{sv=><<"Open Mobile Alliance">>}]},
     ?assertEqual(Exp, R),
-    EncodedTerm = emq_lwm2m_json:json_to_tlv(Exp),
+    EncodedTerm = emqx_lwm2m_json:json_to_tlv(Exp),
     ?assertEqual(Input, EncodedTerm),
-    emq_lwm2m_xml_object_db:stop().
+    emqx_lwm2m_xml_object_db:stop().
 
 
 case02(_Config) ->
     application:set_env(?APP, xml_dir, "../../lwm2m_xml"),
-    emq_lwm2m_xml_object_db:start_link(),
+    emqx_lwm2m_xml_object_db:start_link(),
     Input = [
                 #{tlv_resource_with_value => 16#00, value => <<"Open Mobile Alliance">>},
                 #{tlv_resource_with_value => 16#01, value => <<"Lightweight M2M Client">>},
                 #{tlv_resource_with_value => 16#02, value => <<"345000123">>}
             ],
-    R = emq_lwm2m_json:tlv_to_json(<<"/3/0">>, Input),
+    R = emqx_lwm2m_json:tlv_to_json(<<"/3/0">>, Input),
     Exp = #{    bn=><<"/3/0">>,
                 e=> [
                         #{n=><<"0">>, sv=><<"Open Mobile Alliance">>},
@@ -69,14 +69,14 @@ case02(_Config) ->
                         #{n=><<"2">>, sv=><<"345000123">>}
                     ]},
     ?assertEqual(Exp, R),
-    EncodedTerm = emq_lwm2m_json:json_to_tlv(Exp),
+    EncodedTerm = emqx_lwm2m_json:json_to_tlv(Exp),
     ?assertEqual(Input, EncodedTerm),
-    emq_lwm2m_xml_object_db:stop().
+    emqx_lwm2m_xml_object_db:stop().
 
 
 case03(_Config) ->
     application:set_env(?APP, xml_dir, "../../lwm2m_xml"),
-    emq_lwm2m_xml_object_db:start_link(),
+    emqx_lwm2m_xml_object_db:start_link(),
     Input = [
                 #{
                     tlv_multiple_resource => 16#07,
@@ -86,21 +86,21 @@ case03(_Config) ->
                             ]
                 }
             ],
-    R = emq_lwm2m_json:tlv_to_json(<<"/3/0/7">>, Input),
+    R = emqx_lwm2m_json:tlv_to_json(<<"/3/0/7">>, Input),
     Exp =   #{  bn=><<"/3/0">>,
                 e=> [
                     #{n=><<"7/0">>, v=>3800},
                     #{n=><<"7/1">>, v=>5000}
                 ]},
     ?assertEqual(Exp, R),
-    EncodedTerm = emq_lwm2m_json:json_to_tlv(Exp),
+    EncodedTerm = emqx_lwm2m_json:json_to_tlv(Exp),
     ?assertEqual(Input, EncodedTerm),
-    emq_lwm2m_xml_object_db:stop().
+    emqx_lwm2m_xml_object_db:stop().
 
 
 case04_two_multiple_resource(_Config) ->
     application:set_env(?APP, xml_dir, "../../lwm2m_xml"),
-    emq_lwm2m_xml_object_db:start_link(),
+    emqx_lwm2m_xml_object_db:start_link(),
     Input = [
         #{
             tlv_multiple_resource => 16#07,
@@ -117,7 +117,7 @@ case04_two_multiple_resource(_Config) ->
             ]
         }
     ],
-    R = emq_lwm2m_json:tlv_to_json(<<"/3/0">>, Input),
+    R = emqx_lwm2m_json:tlv_to_json(<<"/3/0">>, Input),
     Exp =   #{  bn=><<"/3/0">>,
                 e=> [
                         #{n=><<"7/0">>, v=>3800},
@@ -126,15 +126,15 @@ case04_two_multiple_resource(_Config) ->
                         #{n=><<"10/1">>, v=>514}
                 ]},
     ?assertEqual(Exp, R),
-    EncodedTerm = emq_lwm2m_json:json_to_tlv(Exp),
+    EncodedTerm = emqx_lwm2m_json:json_to_tlv(Exp),
     ?assertEqual(Input, EncodedTerm),
-    emq_lwm2m_xml_object_db:stop().
+    emqx_lwm2m_xml_object_db:stop().
 
 
 
 case05_two_multiple_resource_three_resource_with_value(_Config) ->
     application:set_env(?APP, xml_dir, "../../lwm2m_xml"),
-    emq_lwm2m_xml_object_db:start_link(),
+    emqx_lwm2m_xml_object_db:start_link(),
     Input = [
                 #{tlv_resource_with_value => 16#00, value => <<"Open Mobile Alliance">>},
                 #{tlv_resource_with_value => 16#01, value => <<"Lightweight M2M Client">>},
@@ -154,7 +154,7 @@ case05_two_multiple_resource_three_resource_with_value(_Config) ->
                     ]
                 }
             ],
-    R = emq_lwm2m_json:tlv_to_json(<<"/3/0">>, Input),
+    R = emqx_lwm2m_json:tlv_to_json(<<"/3/0">>, Input),
     Exp0 = #{bn=><<"/3/0">>,
             e=> [
                     #{n=><<"0">>, sv=><<"Open Mobile Alliance">>},
@@ -166,15 +166,15 @@ case05_two_multiple_resource_three_resource_with_value(_Config) ->
                     #{n=><<"10/1">>, v=>514}
                 ]},
     ?assertEqual(Exp0, R),
-    EncodedTerm = emq_lwm2m_json:json_to_tlv(Exp0),
+    EncodedTerm = emqx_lwm2m_json:json_to_tlv(Exp0),
     ?assertEqual(Input, EncodedTerm),
-    emq_lwm2m_xml_object_db:stop().
+    emqx_lwm2m_xml_object_db:stop().
 
 
 
 case06_one_object_instance(_Config) ->
     application:set_env(?APP, xml_dir, "../../lwm2m_xml"),
-    emq_lwm2m_xml_object_db:start_link(),
+    emqx_lwm2m_xml_object_db:start_link(),
     Input = [
                 #{tlv_resource_with_value => 16#00, value => <<"Open Mobile Alliance">>},
                 #{tlv_resource_with_value => 16#01, value => <<"Lightweight M2M Client">>},
@@ -194,7 +194,7 @@ case06_one_object_instance(_Config) ->
                     ]
                 }
             ],
-    R = emq_lwm2m_json:tlv_to_json(<<"/3/0">>, Input),
+    R = emqx_lwm2m_json:tlv_to_json(<<"/3/0">>, Input),
     Exp0 = #{   bn=><<"/3/0">>,
                 e=> [
                         #{n=><<"0">>, sv=><<"Open Mobile Alliance">>},
@@ -206,16 +206,16 @@ case06_one_object_instance(_Config) ->
                         #{n=><<"10/1">>, v=>514}
                 ]},
     ?assertEqual(Exp0, R),
-    EncodedTerm = emq_lwm2m_json:json_to_tlv(Exp0),
+    EncodedTerm = emqx_lwm2m_json:json_to_tlv(Exp0),
     ?assertEqual(Input, EncodedTerm),
-    emq_lwm2m_xml_object_db:stop().
+    emqx_lwm2m_xml_object_db:stop().
 
 
 
 
 case07_two_object_instance(_Config) ->
     application:set_env(?APP, xml_dir, "../../lwm2m_xml"),
-    emq_lwm2m_xml_object_db:start_link(),
+    emqx_lwm2m_xml_object_db:start_link(),
     Input = [
         #{
             tlv_object_instance => 0,
@@ -249,7 +249,7 @@ case07_two_object_instance(_Config) ->
                 #{tlv_resource_with_value => 16#02, value => <<"CCC">>}
             ]
         }],
-    R = emq_lwm2m_json:tlv_to_json(<<"/3/0">>, Input),
+    R = emqx_lwm2m_json:tlv_to_json(<<"/3/0">>, Input),
     Exp0 = #{   bn=><<"/3">>,
                 e=> [
                         #{n=><<"0/0">>, sv=><<"Open Mobile Alliance">>},
@@ -264,8 +264,8 @@ case07_two_object_instance(_Config) ->
                         #{n=><<"1/2">>, sv=><<"CCC">>}
                 ]},
     ?assertEqual(Exp0, R),
-    EncodedTerm = emq_lwm2m_json:json_to_tlv(Exp0),
+    EncodedTerm = emqx_lwm2m_json:json_to_tlv(Exp0),
     ?assertEqual(Input, EncodedTerm),
-    emq_lwm2m_xml_object_db:stop().
+    emqx_lwm2m_xml_object_db:stop().
 
 

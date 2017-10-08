@@ -14,11 +14,11 @@
 %% limitations under the License.
 %%--------------------------------------------------------------------
 
--module(emq_lwm2m_coap_server).
+-module(emqx_lwm2m_coap_server).
 
 -author("Feng Lee <feng@emqtt.io>").
 
--include("emq_lwm2m.hrl").
+-include("emqx_lwm2m.hrl").
 
 -export([start/0, start/1, stop/0]).
 
@@ -43,7 +43,7 @@ start(Port) ->
             ?LOG(error, "certfile ~p or keyfile ~p are not valid, turn off coap DTLS", [CertFile, KeyFile])
     end,
 
-    lwm2m_coap_server_registry:add_handler([<<"rd">>], emq_lwm2m_coap_resource, undefined).
+    lwm2m_coap_server_registry:add_handler([<<"rd">>], emqx_lwm2m_coap_resource, undefined).
 
 
 stop() ->

@@ -14,11 +14,11 @@
 %% limitations under the License.
 %%--------------------------------------------------------------------
 
--module(emq_lwm2m_registry).
+-module(emqx_lwm2m_registry).
 
 -author("Feng Lee <feng@emqtt.io>").
 
--include("emq_lwm2m.hrl").
+-include("emqx_lwm2m.hrl").
 
 -behaviour(gen_server).
 

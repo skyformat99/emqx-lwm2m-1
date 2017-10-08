@@ -1,14 +1,14 @@
 
-emq_lwm2m
-=========
+emqx_lwm2m
+==========
 
-LWM2M Gateway for the EMQ Broker
+LWM2M Gateway for the EMQ X Broker
 
 LWM2M is Lightweight Machine to Machine protocol. Its standard can be found [here](http://www.openmobilealliance.org/release/LightweightM2M).
 
-User is able to send LWM2M commands(READ/WRITE/EXECUTE/...) and get LWM2M response in mqtt way. Emq_lwm2m transforms data between mqtt and LWM2M protocol.
+User is able to send LWM2M commands(READ/WRITE/EXECUTE/...) and get LWM2M response in mqtt way. emqx_lwm2m transforms data between mqtt and LWM2M protocol.
 
-Emq_lwm2m needs object definitions to parse data from lwm2m devices. Object definitions are declared by organisitions in XML format, you can find those XMLs [here](http://www.openmobilealliance.org/wp/OMNA/LwM2M/LwM2MRegistry.html). Please download required XMLs and put them into directory specified by lwm2m.xml_dir. If no associated object definition is found, response from device will be discarded and report an error message in system log.
+emqx_lwm2m needs object definitions to parse data from lwm2m devices. Object definitions are declared by organisitions in XML format, you can find those XMLs [here](http://www.openmobilealliance.org/wp/OMNA/LwM2M/LwM2MRegistry.html). Please download required XMLs and put them into directory specified by lwm2m.xml_dir. If no associated object definition is found, response from device will be discarded and report an error message in system log.
 
 
 
@@ -16,7 +16,7 @@ Emq_lwm2m needs object definitions to parse data from lwm2m devices. Object defi
 Configure Plugin
 ----------------
 
-File: etc/emq_lwm2m.conf
+File: etc/emqx_lwm2m.conf
 
 ```
 lwm2m.port = 5783
@@ -37,7 +37,7 @@ Load Plugin
 -----------
 
 ```
-./bin/emqttd_ctl plugins load emq_lwm2m
+./bin/emqx_ctl plugins load emqx_lwm2m
 ```
 
 
@@ -298,18 +298,18 @@ or
 
 
 ## NOTES
-- emq_lwm2m implements LWM2M server, which does not include LWM2M bootstrap server. 
-- emq_lwm2m supports UDP binding, no SMS binding yet.
-- emq_lwm2m does not support 
+- emqx_lwm2m implements LWM2M server, which does not include LWM2M bootstrap server. 
+- emqx_lwm2m supports UDP binding, no SMS binding yet.
+- emqx_lwm2m does not support 
 - Fireware object is not fully supported now since mqtt to coap blockwise transfer is not available.
 - Object Versioning is not supported now.
 
 
 DTLS
 -----------
-emq-lwm2m support DTLS to secure UDP data.
+emqx-lwm2m support DTLS to secure UDP data.
 
-Please config lwm2m.certfile and lwm2m.keyfile in emq_lwm2m.conf. If certfile or keyfile are invalid, DTLS will be turned off and you could read a error message in system log.
+Please config lwm2m.certfile and lwm2m.keyfile in emqx_lwm2m.conf. If certfile or keyfile are invalid, DTLS will be turned off and you could read a error message in system log.
 
 ## Client
 wakaama is an easy-to-read lwm2m client tool.

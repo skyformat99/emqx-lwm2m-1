@@ -13,11 +13,11 @@
 %% See the License for the specific language governing permissions and
 %% limitations under the License.
 %%--------------------------------------------------------------------
--module(emq_lwm2m_xml_object_db).
+-module(emqx_lwm2m_xml_object_db).
 
 -author("Feng Lee <feng@emqtt.io>").
 
--include("emq_lwm2m.hrl").
+-include("emqx_lwm2m.hrl").
 -include_lib("xmerl/include/xmerl.hrl").
 
 

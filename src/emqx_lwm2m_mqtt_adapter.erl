@@ -14,15 +14,16 @@
 %% limitations under the License.
 %%--------------------------------------------------------------------
 
--module(emq_lwm2m_mqtt_adapter).
+-module(emqx_lwm2m_mqtt_adapter).
 
 -author("Feng Lee <feng@emqtt.io>").
 
 -behaviour(gen_server).
 
--include("emq_lwm2m.hrl").
--include_lib("emqttd/include/emqttd.hrl").
--include_lib("emqttd/include/emqttd_protocol.hrl").
+-include("emqx_lwm2m.hrl").
+-include_lib("emqx/include/emqx.hrl").
+-include_lib("emqx/include/emqx_mqtt.hrl").
+-include_lib("emqx/include/emqx_macros.hrl").
 
 
 %% API.
@@ -55,7 +56,7 @@
 -define(PROTO_UNSUBSCRIBE(X, Y),        proto_unsubscribe(X, Y)).
 -define(PROTO_PUBLISH(A1, A2, P),       proto_publish(A1, A2, P)).
 -define(PROTO_DELIVER_ACK(Msg, State),  proto_deliver_ack(Msg, State)).
--define(PROTO_SHUTDOWN(A, B),           emqttd_protocol:shutdown(A, B)).
+-define(PROTO_SHUTDOWN(A, B),           emqx_protocol:shutdown(A, B)).
 -endif.
 
 %%--------------------------------------------------------------------
@@ -64,19 +65,19 @@
 
 
 start_link(CoapPid, ClientId, ChId, KeepAliveInterval) ->
-    gen_server:start_link({via, emq_lwm2m_registry, ChId}, ?MODULE, {CoapPid, ClientId, ChId, KeepAliveInterval}, []).
+    gen_server:start_link({via, emqx_lwm2m_registry, ChId}, ?MODULE, {CoapPid, ClientId, ChId, KeepAliveInterval}, []).
 
 stop(ChId) ->
-    gen_server:stop(emq_lwm2m_registry:whereis_name(ChId)).
+    gen_server:stop(emqx_lwm2m_registry:whereis_name(ChId)).
 
 publish(ChId, Method, Response, DataFormat, Ref) ->
-    gen_server:call({via, emq_lwm2m_registry, ChId}, {publish, Method, Response, DataFormat, Ref}).
+    gen_server:call({via, emqx_lwm2m_registry, ChId}, {publish, Method, Response, DataFormat, Ref}).
 
 keepalive(ChId)->
-    gen_server:cast({via, emq_lwm2m_registry, ChId}, keepalive).
+    gen_server:cast({via, emqx_lwm2m_registry, ChId}, keepalive).
 
 new_keepalive_interval(ChId, Interval) ->
-    gen_server:cast({via, emq_lwm2m_registry, ChId}, {new_keepalive_interval, Interval}).
+    gen_server:cast({via, emqx_lwm2m_registry, ChId}, {new_keepalive_interval, Interval}).
 
 %%--------------------------------------------------------------------
 %% gen_server Callbacks
@@ -95,19 +96,19 @@ init({CoapPid, ClientId, ChId, KeepAliveInterval}) ->
     end.
 
 handle_call({publish, Method, CoapResponse, DataFormat, Ref}, _From, State=#state{proto = Proto, rsp_topic = Topic}) ->
-    Message = emq_lwm2m_cmd_handler:coap_response_to_mqtt_payload(Method, CoapResponse, DataFormat, Ref),
+    Message = emqx_lwm2m_cmd_handler:coap_response_to_mqtt_payload(Method, CoapResponse, DataFormat, Ref),
     NewProto = ?PROTO_PUBLISH(Topic, Message, Proto),
     {reply, ok, State#state{proto = NewProto}};
 
 
 handle_call(info, From, State = #state{proto = ProtoState, peer = Channel}) ->
-    ProtoInfo  = emqttd_protocol:info(ProtoState),
+    ProtoInfo  = emqx_protocol:info(ProtoState),
     ClientInfo = [{peername, Channel}],
     {reply, Stats, _, _} = handle_call(stats, From, State),
     {reply, lists:append([ClientInfo, ProtoInfo, Stats]), State};
 
 handle_call(stats, _From, State = #state{proto = ProtoState}) ->
-    {reply, lists:append([emqttd_misc:proc_stats(), emqttd_protocol:stats(ProtoState)]), State};
+    {reply, lists:append([emqttd_misc:proc_stats(), emqx_protocol:stats(ProtoState)]), State};
 
 handle_call(kick, _From, State) ->
     {stop, {shutdown, kick}, ok, State};
@@ -121,7 +122,7 @@ handle_call(get_rate_limit, _From, State) ->
     {reply, ok, State};
 
 handle_call(session, _From, State = #state{proto = ProtoState}) ->
-    {reply, emqttd_protocol:session(ProtoState), State};
+    {reply, emqx_protocol:session(ProtoState), State};
 
 handle_call(Request, _From, State) ->
     ?LOG(error, "adapter unexpected call ~p", [Request]),
@@ -134,7 +135,7 @@ handle_cast({new_keepalive_interval, Interval}, State=#state{}) ->
 handle_cast(keepalive, State=#state{keepalive_interval = undefined}) ->
     {noreply, State, hibernate};
 handle_cast(keepalive, State=#state{keepalive = Keepalive}) ->
-    NewKeepalive = emq_lwm2m_timer:kick_timer(Keepalive),
+    NewKeepalive = emqx_lwm2m_timer:kick_timer(Keepalive),
     {noreply, State#state{keepalive = NewKeepalive}, hibernate};
 
 handle_cast(Msg, State) ->
@@ -157,14 +158,14 @@ handle_info({subscribe,_}, State) ->
 
 handle_info({keepalive, start, Interval}, StateData) ->
     ?LOG(debug, "Keepalive at the interval of ~p", [Interval]),
-    KeepAlive = emq_lwm2m_timer:start_timer(Interval, {keepalive, check}),
+    KeepAlive = emqx_lwm2m_timer:start_timer(Interval, {keepalive, check}),
     {noreply, StateData#state{keepalive = KeepAlive}, hibernate};
 
 handle_info({keepalive, check}, StateData = #state{keepalive = KeepAlive, keepalive_interval = Interval}) ->
-    case emq_lwm2m_timer:is_timeout(KeepAlive) of
+    case emqx_lwm2m_timer:is_timeout(KeepAlive) of
         false ->
             ?LOG(debug, "Keepalive checked ok", []),
-            NewKeepAlive = emq_lwm2m_timer:start_timer(Interval, {keepalive, check}),
+            NewKeepAlive = emqx_lwm2m_timer:start_timer(Interval, {keepalive, check}),
             {noreply, StateData#state{keepalive = NewKeepAlive}};
         true ->
             ?LOG(debug, "Keepalive timeout", []),
@@ -191,7 +192,7 @@ handle_info(Info, State) ->
     {noreply, State, hibernate}.
 
 terminate(Reason, #state{proto = Proto, keepalive = KeepAlive, sub_topic = SubTopic}) ->
-    emq_lwm2m_timer:cancel_timer(KeepAlive),
+    emqx_lwm2m_timer:cancel_timer(KeepAlive),
     CleanFun =  fun(Error) ->
                     ?LOG(debug, "unsubscribe ~p while exiting", [SubTopic]),
                     NewProto = ?PROTO_UNSUBSCRIBE(SubTopic, Proto),
@@ -218,13 +219,13 @@ code_change(_OldVsn, State, _Extra) ->
 proto_init(ClientId, Username, Password, Channel, KeepAliveInterval) ->
     SendFun = fun(_Packet) -> ok end,
     PktOpts = [{max_clientid_len, 96}, {max_packet_size, 512}],
-    Proto = emqttd_protocol:init(Channel, SendFun, PktOpts),
+    Proto = emqx_protocol:init(Channel, SendFun, PktOpts),
     ConnPkt = #mqtt_packet_connect{client_id  = ClientId,
                                    username   = Username,
                                    password   = Password,
                                    clean_sess = true,
                                    keep_alive = KeepAliveInterval},
-    case emqttd_protocol:received(?CONNECT_PACKET(ConnPkt), Proto) of
+    case emqx_protocol:received(?CONNECT_PACKET(ConnPkt), Proto) of
         {ok, Proto1}                              -> {ok, Proto1};
         {stop, {shutdown, auth_failure}, _Proto2} -> {stop, auth_failure};
         Other                                     -> error(Other)
@@ -232,14 +233,14 @@ proto_init(ClientId, Username, Password, Channel, KeepAliveInterval) ->
 
 proto_subscribe(Topic, Proto) ->
     ?LOG(debug, "subscribe Topic=~p", [Topic]),
-    case emqttd_protocol:received(?SUBSCRIBE_PACKET(1, [{Topic, ?QOS1}]), Proto) of
+    case emqx_protocol:received(?SUBSCRIBE_PACKET(1, [{Topic, ?QOS1}]), Proto) of
         {ok, Proto1}  -> Proto1;
         Other         -> error(Other)
     end.
 
 proto_unsubscribe(Topic, Proto) ->
     ?LOG(debug, "unsubscribe Topic=~p", [Topic]),
-    case emqttd_protocol:received(?UNSUBSCRIBE_PACKET(1, [Topic]), Proto) of
+    case emqx_protocol:received(?UNSUBSCRIBE_PACKET(1, [Topic]), Proto) of
         {ok, Proto1}  -> Proto1;
         Other         -> error(Other)
     end.
@@ -249,7 +250,7 @@ proto_publish(Topic, Payload, Proto) ->
     Publish = #mqtt_packet{header   = #mqtt_packet_header{type = ?PUBLISH, qos = ?QOS0},
                            variable = #mqtt_packet_publish{topic_name = Topic, packet_id = 1},
                            payload  = Payload},
-    case emqttd_protocol:received(Publish, Proto) of
+    case emqx_protocol:received(Publish, Proto) of
         {ok, Proto1}  -> Proto1;
         Other         -> error(Other)
     end.
@@ -257,14 +258,14 @@ proto_publish(Topic, Payload, Proto) ->
 proto_deliver_ack(#mqtt_message{qos = ?QOS0, pktid = _PacketId}, Proto) ->
     Proto;
 proto_deliver_ack(#mqtt_message{qos = ?QOS1, pktid = PacketId}, Proto) ->
-    case emqttd_protocol:received(?PUBACK_PACKET(?PUBACK, PacketId), Proto) of
+    case emqx_protocol:received(?PUBACK_PACKET(?PUBACK, PacketId), Proto) of
         {ok, NewProto} -> NewProto;
         Other          -> error(Other)
     end;
 proto_deliver_ack(#mqtt_message{qos = ?QOS2, pktid = PacketId}, Proto) ->
-    case emqttd_protocol:received(?PUBACK_PACKET(?PUBREC, PacketId), Proto) of
+    case emqx_protocol:received(?PUBACK_PACKET(?PUBREC, PacketId), Proto) of
         {ok, NewProto} ->
-            case emqttd_protocol:received(?PUBACK_PACKET(?PUBCOMP, PacketId), NewProto) of
+            case emqx_protocol:received(?PUBACK_PACKET(?PUBCOMP, PacketId), NewProto) of
                 {ok, CurrentProto} -> CurrentProto;
                 Another            -> error(Another)
             end;
@@ -276,7 +277,7 @@ proto_deliver_ack(#mqtt_message{qos = ?QOS2, pktid = PacketId}, Proto) ->
 deliver_to_coap(JsonData, CoapPid) ->
     ?LOG(debug, "deliver_to_coap CoapPid=~p (alive=~p), JsonData=~p", [CoapPid, is_process_alive(CoapPid), JsonData]),
     Command = jsx:decode(JsonData, [return_maps]),
-    {CoapRequest, Ref} = emq_lwm2m_cmd_handler:mqtt_payload_to_coap_request(Command),
+    {CoapRequest, Ref} = emqx_lwm2m_cmd_handler:mqtt_payload_to_coap_request(Command),
     CoapPid ! {dispatch_command, CoapRequest, Ref}.
 
 

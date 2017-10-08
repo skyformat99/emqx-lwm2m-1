@@ -14,7 +14,7 @@
 %% limitations under the License.
 %%--------------------------------------------------------------------
 
--module(emq_lwm2m_SUITE).
+-module(emqx_lwm2m_SUITE).
 
 -compile(export_all).
 
@@ -22,7 +22,7 @@
 
 -define(LOGT(Format, Args), lager:debug("TEST_SUITE: " ++ Format, Args)).
 
--include("emq_lwm2m.hrl").
+-include("emqx_lwm2m.hrl").
 -include_lib("lwm2m_coap/include/coap.hrl").
 -include_lib("eunit/include/eunit.hrl").
 
@@ -49,7 +49,7 @@ end_per_suite(Config) ->
 case01_register(_Config) ->
     application:set_env(?APP, port, ?PORT),
     test_mqtt_broker:start_link(),
-    {ok, _Started} = application:ensure_all_started(emq_lwm2m),
+    {ok, _Started} = application:ensure_all_started(emqx_lwm2m),
     timer:sleep(100),
 
     % ----------------------------------------
@@ -71,7 +71,7 @@ case01_register(_Config) ->
     ?assertEqual([SubTopic], test_mqtt_broker:get_subscrbied_topics()),
 
     test_close_udp_socket(UdpSock),
-    ok = application:stop(emq_lwm2m),
+    ok = application:stop(emqx_lwm2m),
     ok = application:stop(lwm2m_coap),
     test_mqtt_broker:stop().
 
@@ -79,7 +79,7 @@ case01_register(_Config) ->
 case02_update_deregister(_Config) ->
     application:set_env(?APP, port, ?PORT),
     test_mqtt_broker:start_link(),
-    {ok, _Started} = application:ensure_all_started(emq_lwm2m),
+    {ok, _Started} = application:ensure_all_started(emqx_lwm2m),
     timer:sleep(100),
 
     % ----------------------------------------
@@ -138,7 +138,7 @@ case02_update_deregister(_Config) ->
     ?assertEqual([], test_mqtt_broker:get_subscrbied_topics()),
 
     test_close_udp_socket(UdpSock),
-    ok = application:stop(emq_lwm2m),
+    ok = application:stop(emqx_lwm2m),
     ok = application:stop(lwm2m_coap),
     test_mqtt_broker:stop().
 
@@ -147,7 +147,7 @@ case02_update_deregister(_Config) ->
 case03_register_wrong_version(_Config) ->
     application:set_env(?APP, port, ?PORT),
     test_mqtt_broker:start_link(),
-    {ok, _Started} = application:ensure_all_started(emq_lwm2m),
+    {ok, _Started} = application:ensure_all_started(emqx_lwm2m),
     timer:sleep(100),
 
     % ----------------------------------------
@@ -168,7 +168,7 @@ case03_register_wrong_version(_Config) ->
     ?assertEqual([], test_mqtt_broker:get_subscrbied_topics()),
 
     test_close_udp_socket(UdpSock),
-    ok = application:stop(emq_lwm2m),
+    ok = application:stop(emqx_lwm2m),
     ok = application:stop(lwm2m_coap),
     test_mqtt_broker:stop().
 
@@ -177,7 +177,7 @@ case03_register_wrong_version(_Config) ->
 case04_register_and_lifetime_timeout(_Config) ->
     application:set_env(?APP, port, ?PORT),
     test_mqtt_broker:start_link(),
-    {ok, _Started} = application:ensure_all_started(emq_lwm2m),
+    {ok, _Started} = application:ensure_all_started(emqx_lwm2m),
     timer:sleep(100),
 
     % ----------------------------------------
@@ -207,7 +207,7 @@ case04_register_and_lifetime_timeout(_Config) ->
     ?assertEqual([], test_mqtt_broker:get_subscrbied_topics()),
 
     test_close_udp_socket(UdpSock),
-    ok = application:stop(emq_lwm2m),
+    ok = application:stop(emqx_lwm2m),
     ok = application:stop(lwm2m_coap),
     test_mqtt_broker:stop().
 
@@ -217,7 +217,7 @@ case04_register_and_lifetime_timeout(_Config) ->
 case05_register_wrong_epn(_Config) ->
     application:set_env(?APP, port, ?PORT),
     test_mqtt_broker:start_link(),
-    {ok, _Started} = application:ensure_all_started(emq_lwm2m),
+    {ok, _Started} = application:ensure_all_started(emqx_lwm2m),
     timer:sleep(100),
 
     % ----------------------------------------
@@ -237,7 +237,7 @@ case05_register_wrong_epn(_Config) ->
     ?assertEqual([], test_mqtt_broker:get_subscrbied_topics()),
 
     test_close_udp_socket(UdpSock),
-    ok = application:stop(emq_lwm2m),
+    ok = application:stop(emqx_lwm2m),
     ok = application:stop(lwm2m_coap),
     test_mqtt_broker:stop().
 
@@ -247,7 +247,7 @@ case05_register_wrong_epn(_Config) ->
 case06_register_wrong_lifetime(_Config) ->
     application:set_env(?APP, port, ?PORT),
     test_mqtt_broker:start_link(),
-    {ok, _Started} = application:ensure_all_started(emq_lwm2m),
+    {ok, _Started} = application:ensure_all_started(emqx_lwm2m),
     timer:sleep(100),
 
     % ----------------------------------------
@@ -268,7 +268,7 @@ case06_register_wrong_lifetime(_Config) ->
     ?assertEqual([], test_mqtt_broker:get_subscrbied_topics()),
 
     test_close_udp_socket(UdpSock),
-    ok = application:stop(emq_lwm2m),
+    ok = application:stop(emqx_lwm2m),
     ok = application:stop(lwm2m_coap),
     test_mqtt_broker:stop().
 
@@ -279,7 +279,7 @@ case10_read(_Config) ->
     application:set_env(?APP, port, ?PORT),
     application:set_env(?APP, xml_dir, "../../lwm2m_xml"),
     test_mqtt_broker:start_link(),
-    {ok, _Started} = application:ensure_all_started(emq_lwm2m),
+    {ok, _Started} = application:ensure_all_started(emqx_lwm2m),
     timer:sleep(100),
 
     % step 1, device register ...
@@ -331,7 +331,7 @@ case10_read(_Config) ->
     ?assertEqual({PubTopic, ReadResult}, test_mqtt_broker:get_published_msg()),
 
     test_close_udp_socket(UdpSock),
-    ok = application:stop(emq_lwm2m),
+    ok = application:stop(emqx_lwm2m),
     ok = application:stop(lwm2m_coap),
     test_mqtt_broker:stop().
 
@@ -342,7 +342,7 @@ case11_read_object_tlv(_Config) ->
     application:set_env(?APP, port, ?PORT),
     application:set_env(?APP, xml_dir, "../../lwm2m_xml"),
     test_mqtt_broker:start_link(),
-    {ok, _Started} = application:ensure_all_started(emq_lwm2m),
+    {ok, _Started} = application:ensure_all_started(emqx_lwm2m),
     timer:sleep(100),
 
     % step 1, device register ...
@@ -398,7 +398,7 @@ case11_read_object_tlv(_Config) ->
     ?assertEqual({PubTopic, ReadResult}, test_mqtt_broker:get_published_msg()),
 
     test_close_udp_socket(UdpSock),
-    ok = application:stop(emq_lwm2m),
+    ok = application:stop(emqx_lwm2m),
     ok = application:stop(lwm2m_coap),
     test_mqtt_broker:stop().
 
@@ -408,7 +408,7 @@ case11_read_object_json(_Config) ->
     application:set_env(?APP, port, ?PORT),
     application:set_env(?APP, xml_dir, "../../lwm2m_xml"),
     test_mqtt_broker:start_link(),
-    {ok, _Started} = application:ensure_all_started(emq_lwm2m),
+    {ok, _Started} = application:ensure_all_started(emqx_lwm2m),
     timer:sleep(100),
 
     % step 1, device register ...
@@ -464,7 +464,7 @@ case11_read_object_json(_Config) ->
     ?assertEqual({PubTopic, ReadResult}, test_mqtt_broker:get_published_msg()),
 
     test_close_udp_socket(UdpSock),
-    ok = application:stop(emq_lwm2m),
+    ok = application:stop(emqx_lwm2m),
     ok = application:stop(lwm2m_coap),
     test_mqtt_broker:stop().
 
@@ -473,7 +473,7 @@ case12_read_resource_opaque(_Config) ->
     application:set_env(?APP, port, ?PORT),
     application:set_env(?APP, xml_dir, "../../lwm2m_xml"),
     test_mqtt_broker:start_link(),
-    {ok, _Started} = application:ensure_all_started(emq_lwm2m),
+    {ok, _Started} = application:ensure_all_started(emqx_lwm2m),
     timer:sleep(100),
 
     % step 1, device register ...
@@ -526,7 +526,7 @@ case12_read_resource_opaque(_Config) ->
     ?assertEqual({PubTopic, ReadResult}, test_mqtt_broker:get_published_msg()),
 
     test_close_udp_socket(UdpSock),
-    ok = application:stop(emq_lwm2m),
+    ok = application:stop(emqx_lwm2m),
     ok = application:stop(lwm2m_coap),
     test_mqtt_broker:stop().
 
@@ -536,7 +536,7 @@ case13_read_no_xml(_Config) ->
     application:set_env(?APP, port, ?PORT),
     application:set_env(?APP, xml_dir, "../../lwm2m_xml"),
     test_mqtt_broker:start_link(),
-    {ok, _Started} = application:ensure_all_started(emq_lwm2m),
+    {ok, _Started} = application:ensure_all_started(emqx_lwm2m),
     timer:sleep(100),
 
     % step 1, device register ...
@@ -588,7 +588,7 @@ case13_read_no_xml(_Config) ->
     ?assertEqual({PubTopic, ReadResult}, test_mqtt_broker:get_published_msg()),
 
     test_close_udp_socket(UdpSock),
-    ok = application:stop(emq_lwm2m),
+    ok = application:stop(emqx_lwm2m),
     ok = application:stop(lwm2m_coap),
     test_mqtt_broker:stop().
 
@@ -597,7 +597,7 @@ case20_write(_Config) ->
     application:set_env(?APP, port, ?PORT),
     application:set_env(?APP, xml_dir, "../../lwm2m_xml"),
     test_mqtt_broker:start_link(),
-    {ok, _Started} = application:ensure_all_started(emq_lwm2m),
+    {ok, _Started} = application:ensure_all_started(emqx_lwm2m),
     timer:sleep(100),
 
     % step 1, device register ...
@@ -647,7 +647,7 @@ case20_write(_Config) ->
     ?assertEqual({PubTopic, ReadResult}, test_mqtt_broker:get_published_msg()),
 
     test_close_udp_socket(UdpSock),
-    ok = application:stop(emq_lwm2m),
+    ok = application:stop(emqx_lwm2m),
     ok = application:stop(lwm2m_coap),
     test_mqtt_broker:stop().
 
@@ -657,7 +657,7 @@ case21_write_object(_Config) ->
     application:set_env(?APP, port, ?PORT),
     application:set_env(?APP, xml_dir, "../../lwm2m_xml"),
     test_mqtt_broker:start_link(),
-    {ok, _Started} = application:ensure_all_started(emq_lwm2m),
+    {ok, _Started} = application:ensure_all_started(emqx_lwm2m),
     timer:sleep(100),
 
     % step 1, device register ...
@@ -712,7 +712,7 @@ case21_write_object(_Config) ->
     ?assertEqual({PubTopic, ReadResult}, test_mqtt_broker:get_published_msg()),
 
     test_close_udp_socket(UdpSock),
-    ok = application:stop(emq_lwm2m),
+    ok = application:stop(emqx_lwm2m),
     ok = application:stop(lwm2m_coap),
     test_mqtt_broker:stop().
 
@@ -722,7 +722,7 @@ case22_write_error(_Config) ->
     application:set_env(?APP, port, ?PORT),
     application:set_env(?APP, xml_dir, "../../lwm2m_xml"),
     test_mqtt_broker:start_link(),
-    {ok, _Started} = application:ensure_all_started(emq_lwm2m),
+    {ok, _Started} = application:ensure_all_started(emqx_lwm2m),
     timer:sleep(100),
 
     % step 1, device register ...
@@ -772,7 +772,7 @@ case22_write_error(_Config) ->
     ?assertEqual({PubTopic, ReadResult}, test_mqtt_broker:get_published_msg()),
 
     test_close_udp_socket(UdpSock),
-    ok = application:stop(emq_lwm2m),
+    ok = application:stop(emqx_lwm2m),
     ok = application:stop(lwm2m_coap),
     test_mqtt_broker:stop().
 
@@ -783,7 +783,7 @@ case30_execute(_Config) ->
     application:set_env(?APP, port, ?PORT),
     application:set_env(?APP, xml_dir, "../../lwm2m_xml"),
     test_mqtt_broker:start_link(),
-    {ok, _Started} = application:ensure_all_started(emq_lwm2m),
+    {ok, _Started} = application:ensure_all_started(emqx_lwm2m),
     timer:sleep(100),
 
     % step 1, device register ...
@@ -834,7 +834,7 @@ case30_execute(_Config) ->
     ?assertEqual({PubTopic, ReadResult}, test_mqtt_broker:get_published_msg()),
 
     test_close_udp_socket(UdpSock),
-    ok = application:stop(emq_lwm2m),
+    ok = application:stop(emqx_lwm2m),
     ok = application:stop(lwm2m_coap),
     test_mqtt_broker:stop().
 
@@ -844,7 +844,7 @@ case31_execute_error(_Config) ->
     application:set_env(?APP, port, ?PORT),
     application:set_env(?APP, xml_dir, "../../lwm2m_xml"),
     test_mqtt_broker:start_link(),
-    {ok, _Started} = application:ensure_all_started(emq_lwm2m),
+    {ok, _Started} = application:ensure_all_started(emqx_lwm2m),
     timer:sleep(100),
 
     % step 1, device register ...
@@ -895,7 +895,7 @@ case31_execute_error(_Config) ->
     ?assertEqual({PubTopic, ReadResult}, test_mqtt_broker:get_published_msg()),
 
     test_close_udp_socket(UdpSock),
-    ok = application:stop(emq_lwm2m),
+    ok = application:stop(emqx_lwm2m),
     ok = application:stop(lwm2m_coap),
     test_mqtt_broker:stop().
 
@@ -905,7 +905,7 @@ case40_discover(_Config) ->
     application:set_env(?APP, port, ?PORT),
     application:set_env(?APP, xml_dir, "../../lwm2m_xml"),
     test_mqtt_broker:start_link(),
-    {ok, _Started} = application:ensure_all_started(emq_lwm2m),
+    {ok, _Started} = application:ensure_all_started(emqx_lwm2m),
     timer:sleep(100),
 
     % step 1, device register ...
@@ -962,7 +962,7 @@ case40_discover(_Config) ->
     ?assertEqual({PubTopic, ReadResult}, test_mqtt_broker:get_published_msg()),
 
     test_close_udp_socket(UdpSock),
-    ok = application:stop(emq_lwm2m),
+    ok = application:stop(emqx_lwm2m),
     ok = application:stop(lwm2m_coap),
     test_mqtt_broker:stop().
 
@@ -973,7 +973,7 @@ case50_write_attribute(_Config) ->
     application:set_env(?APP, port, ?PORT),
     application:set_env(?APP, xml_dir, "../../lwm2m_xml"),
     test_mqtt_broker:start_link(),
-    {ok, _Started} = application:ensure_all_started(emq_lwm2m),
+    {ok, _Started} = application:ensure_all_started(emqx_lwm2m),
     timer:sleep(100),
 
     % step 1, device register ...
@@ -1032,7 +1032,7 @@ case50_write_attribute(_Config) ->
     ?assertEqual({PubTopic, ReadResult}, test_mqtt_broker:get_published_msg()),
 
     test_close_udp_socket(UdpSock),
-    ok = application:stop(emq_lwm2m),
+    ok = application:stop(emqx_lwm2m),
     ok = application:stop(lwm2m_coap),
     test_mqtt_broker:stop().
 
@@ -1045,7 +1045,7 @@ case60_observe(_Config) ->
     application:set_env(?APP, port, ?PORT),
     application:set_env(?APP, xml_dir, "../../lwm2m_xml"),
     test_mqtt_broker:start_link(),
-    {ok, _Started} = application:ensure_all_started(emq_lwm2m),
+    {ok, _Started} = application:ensure_all_started(emqx_lwm2m),
     timer:sleep(100),
 
     % step 1, device register ...
@@ -1120,7 +1120,7 @@ case60_observe(_Config) ->
     ?assertEqual({PubTopic, ReadResult2}, test_mqtt_broker:get_published_msg()),
 
     test_close_udp_socket(UdpSock),
-    ok = application:stop(emq_lwm2m),
+    ok = application:stop(emqx_lwm2m),
     ok = application:stop(lwm2m_coap),
     test_mqtt_broker:stop().
 

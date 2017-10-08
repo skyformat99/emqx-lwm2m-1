@@ -14,12 +14,13 @@
 %% limitations under the License.
 %%--------------------------------------------------------------------
 
--module(emq_lwm2m_coap_resource).
+-module(emqx_lwm2m_coap_resource).
 
 -author("Feng Lee <feng@emqtt.io>").
 
--include_lib("emqttd/include/emqttd.hrl").
--include_lib("emqttd/include/emqttd_protocol.hrl").
+-include_lib("emqx/include/emqx.hrl").
+-include_lib("emqx/include/emqx_mqtt.hrl").
+-include_lib("emqx/include/emqx_macros.hrl").
 -include_lib("lwm2m_coap/include/coap.hrl").
 
 
@@ -28,7 +29,7 @@
 -export([coap_discover/2, coap_get/4, coap_post/5, coap_put/5, coap_delete/3,
     coap_observe/4, coap_unobserve/1, handle_info/2, coap_ack/2]).
 
--include("emq_lwm2m.hrl").
+-include("emqx_lwm2m.hrl").
 
 -define(LWM2M_REGISTER_PREFIX, <<"rd">>).
 
@@ -60,7 +61,7 @@ coap_post(ChId, [?LWM2M_REGISTER_PREFIX], [], Query, Content) ->
             ?LOG(debug, "~p ~p REGISTER command Query=~p, Content=~p, Location=~p", [self(), ChId, Query, Content, Location]),
             put(lwm2m_context, #lwm2m_context{epn = Epn, location = Location}),
             % TODO: parse content
-            emq_lwm2m_mqtt_adapter:start_link(self(), Epn, ChId, LifeTime),
+            emqx_lwm2m_mqtt_adapter:start_link(self(), Epn, ChId, LifeTime),
             {ok, created, #coap_content{payload = list_to_binary(io_lib:format("/rd/~s", [Location]))}};
         false ->
             ?LOG(error, "refuse REGISTER from ~p due to wrong parameters, epn=~p, lifetime=~p, lwm2m_ver=~p", [ChId, Epn, LifeTime, Ver]),
@@ -77,7 +78,7 @@ coap_post(ChId, [?LWM2M_REGISTER_PREFIX], [Location], Query, Content) ->
     % TODO: parse content
     case Location of
         TrueLocation ->
-            emq_lwm2m_mqtt_adapter:new_keepalive_interval(ChId, LifeTime),
+            emqx_lwm2m_mqtt_adapter:new_keepalive_interval(ChId, LifeTime),
             {ok, changed, #coap_content{}};
         _Other       ->
             ?LOG(error, "Location mismatch ~p vs ~p", [Location, TrueLocation]),
@@ -97,7 +98,7 @@ coap_delete(ChId, [?LWM2M_REGISTER_PREFIX], [Location]) ->
     ?LOG(debug, "~p ~p DELETE command location=~p", [self(), ChId, Location]),
     case Location of
         TrueLocation ->
-            emq_lwm2m_mqtt_adapter:stop(ChId),
+            emqx_lwm2m_mqtt_adapter:stop(ChId),
             quit(ChId);
         _Other ->
             ?LOG(error, "ignore DE-REGISTER command due to mismatch location ~p vs ~p", [Location, TrueLocation]),
@@ -123,7 +124,7 @@ handle_info({dispatch_command, CoapRequest, Ref}, _ObState) ->
 handle_info({coap_response, ChId, _Channel, Ref, Msg=#coap_message{method = Method, payload = Payload, options = Options}}, ObState) ->
     ?LOG(debug, "receive coap response from device ~p", [Msg]),
     DataFormat = data_format(Options),
-    emq_lwm2m_mqtt_adapter:publish(ChId, Method, Payload, DataFormat, Ref),
+    emqx_lwm2m_mqtt_adapter:publish(ChId, Method, Payload, DataFormat, Ref),
     {noreply, ObState};
 
 handle_info(Message, State) ->

@@ -14,13 +14,13 @@
 %% limitations under the License.
 %%--------------------------------------------------------------------
 
--module(emq_lwm2m_json).
+-module(emqx_lwm2m_json).
 
 -author("Feng Lee <feng@emqtt.io>").
 
 -export([tlv_to_json/2, json_to_tlv/1, text_to_json/2, opaque_to_json/2]).
 
--include("emq_lwm2m.hrl").
+-include("emqx_lwm2m.hrl").
 
 -define(LOG(Level, Format, Args), lager:Level("LWM2M-JSON: " ++ Format, Args)).
 
@@ -29,7 +29,7 @@
 
 tlv_to_json(BaseName, TlvData) ->
     ObjectId = object_id(BaseName),
-    ObjDefinition = emq_lwm2m_xml_object:get_obj_def(ObjectId, true),
+    ObjDefinition = emqx_lwm2m_xml_object:get_obj_def(ObjectId, true),
     case TlvData of
         [#{tlv_resource_with_value:=Id, value:=Value}] ->
             TrueBaseName = basename(BaseName, undefined, undefined, Id, 3),
@@ -133,7 +133,7 @@ object_resource_id(BaseName) ->
 
 % TLV binary to json text
 value(Value, ResourceId, ObjDefinition) ->
-    case emq_lwm2m_xml_object:get_resource_type(ResourceId, ObjDefinition) of
+    case emqx_lwm2m_xml_object:get_resource_type(ResourceId, ObjDefinition) of
         "String" ->
             {sv, Value};  % keep binary type since it is same as a string for jsx
         "Integer" ->
@@ -337,14 +337,14 @@ encode_int(Int) ->
 
 text_to_json(BaseName, Text) ->
     {ObjectId, ResourceId} = object_resource_id(BaseName),
-    ObjDefinition = emq_lwm2m_xml_object:get_obj_def(ObjectId, true),
+    ObjDefinition = emqx_lwm2m_xml_object:get_obj_def(ObjectId, true),
     {K, V} = text_value(Text, ResourceId, ObjDefinition),
     #{bn=>BaseName, e=>[#{K=>V}]}.
 
 
 % text to json
 text_value(Text, ResourceId, ObjDefinition) ->
-    case emq_lwm2m_xml_object:get_resource_type(ResourceId, ObjDefinition) of
+    case emqx_lwm2m_xml_object:get_resource_type(ResourceId, ObjDefinition) of
         "String" ->
             {sv, Text};  % keep binary type since it is same as a string for jsx
         "Integer" ->

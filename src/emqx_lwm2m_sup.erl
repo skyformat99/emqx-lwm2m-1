@@ -14,38 +14,21 @@
 %% limitations under the License.
 %%--------------------------------------------------------------------
 
--module(emq_lwm2m_timer).
+-module(emqx_lwm2m_sup).
 
 -author("Feng Lee <feng@emqtt.io>").
 
--include("emq_lwm2m.hrl").
+-behaviour(supervisor).
 
--export([cancel_timer/1, start_timer/2, kick_timer/1, is_timeout/1]).
+-export([start_link/0, init/1]).
 
--record(timer_state, {kickme, tref, message}).
-
--define(LOG(Level, Format, Args),
-    lager:Level("LWM2M-TIMER: " ++ Format, Args)).
+-define(CHILD(M), {M, {M, start_link, []}, permanent, 5000, worker, [M]}).
 
 
+start_link() ->
+    supervisor:start_link({local, ?MODULE}, ?MODULE, []).
 
-cancel_timer(#timer_state{tref = TRef}) when is_reference(TRef) ->
-    catch erlang:cancel_timer(TRef),
-    ok;
-cancel_timer(_) ->
-    ok.
-
-kick_timer(State=#timer_state{kickme = false}) ->
-    State#timer_state{kickme = true};
-kick_timer(State=#timer_state{kickme = true}) ->
-    State.
-
-start_timer(Sec, Msg) ->
-    ?LOG(debug, "emq_lwm2m_timer:start_timer ~p", [Sec]),
-    TRef = erlang:send_after(timer:seconds(Sec), self(), Msg),
-    #timer_state{kickme = false, tref = TRef, message = Msg}.
-
-
-is_timeout(#timer_state{kickme = Bool}) ->
-    not Bool.
+init(_Args) ->
+    random:seed(erlang:phash2([node()]), erlang:monotonic_time(), erlang:unique_integer()),
+    {ok, { {one_for_all, 10, 3600}, [?CHILD(emqx_lwm2m_registry), ?CHILD(emqx_lwm2m_xml_object_db)] }}.
 

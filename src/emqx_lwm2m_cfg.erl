@@ -13,9 +13,10 @@
 %% See the License for the specific language governing permissions and
 %% limitations under the License.
 %%--------------------------------------------------------------------
--module (emq_lwm2m_config).
 
--include("emq_lwm2m.hrl").
+-module (emqx_lwm2m_cfg).
+
+-include("emqx_lwm2m.hrl").
 
 -export ([register/0, unregister/0]).
 
@@ -55,3 +56,4 @@ unregister_config() ->
 %%--------------------------------------------------------------------
 keys() ->
     ["lwm2m.port", "lwm2m.certfile", "lwm2m.keyfile", "lwm2m.xml_dir"].
+

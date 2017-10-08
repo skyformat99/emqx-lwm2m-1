@@ -14,7 +14,7 @@
 %% limitations under the License.
 %%--------------------------------------------------------------------
 
--define(APP, emq_lwm2m).
+-define(APP, emqx_lwm2m).
 
 
 -record(coap_mqtt_auth, {clientid, username, password}).

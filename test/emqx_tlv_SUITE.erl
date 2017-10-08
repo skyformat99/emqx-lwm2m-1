@@ -14,13 +14,13 @@
 %% limitations under the License.
 %%--------------------------------------------------------------------
 
--module(emq_tlv_SUITE).
+-module(emqx_tlv_SUITE).
 
 -compile(export_all).
 
 -define(LOGT(Format, Args), lager:debug("TEST_SUITE: " ++ Format, Args)).
 
--include("emq_lwm2m.hrl").
+-include("emqx_lwm2m.hrl").
 -include_lib("lwm2m_coap/include/coap.hrl").
 -include_lib("eunit/include/eunit.hrl").
 
@@ -38,17 +38,17 @@ end_per_suite(Config) ->
 
 case01(_Config) ->
     Data = <<16#C8, 16#00, 16#14, 16#4F, 16#70, 16#65, 16#6E, 16#20, 16#4D, 16#6F, 16#62, 16#69, 16#6C, 16#65, 16#20, 16#41, 16#6C, 16#6C, 16#69, 16#61, 16#6E, 16#63, 16#65>>,
-    R = emq_lwm2m_tlv:parse(Data),
+    R = emqx_lwm2m_tlv:parse(Data),
     Exp = [
         #{tlv_resource_with_value => 16#00, value => <<"Open Mobile Alliance">>}
     ],
     ?assertEqual(Exp, R),
-    EncodedBinary = emq_lwm2m_tlv:encode(Exp),
+    EncodedBinary = emqx_lwm2m_tlv:encode(Exp),
     ?assertEqual(EncodedBinary, Data).
 
 case02(_Config) ->
     Data = <<16#86, 16#06, 16#41, 16#00, 16#01, 16#41, 16#01, 16#05>>,
-    R = emq_lwm2m_tlv:parse(Data),
+    R = emqx_lwm2m_tlv:parse(Data),
     Exp = [
         #{tlv_multiple_resource => 16#06, value => [
                                                                     #{tlv_resource_instance => 16#00, value => <<1>>},
@@ -56,24 +56,24 @@ case02(_Config) ->
             ]}
     ],
     ?assertEqual(Exp, R),
-    EncodedBinary = emq_lwm2m_tlv:encode(Exp),
+    EncodedBinary = emqx_lwm2m_tlv:encode(Exp),
     ?assertEqual(EncodedBinary, Data).
 
 case03(_Config) ->
     Data = <<16#C8, 16#00, 16#14, 16#4F, 16#70, 16#65, 16#6E, 16#20, 16#4D, 16#6F, 16#62, 16#69, 16#6C, 16#65, 16#20, 16#41, 16#6C, 16#6C, 16#69, 16#61, 16#6E, 16#63, 16#65, 16#C8, 16#01, 16#16, 16#4C, 16#69, 16#67, 16#68, 16#74, 16#77, 16#65, 16#69, 16#67, 16#68, 16#74, 16#20, 16#4D, 16#32, 16#4D, 16#20, 16#43, 16#6C, 16#69, 16#65, 16#6E, 16#74, 16#C8, 16#02, 16#09, 16#33, 16#34, 16#35, 16#30, 16#30, 16#30, 16#31, 16#32, 16#33>>,
-    R = emq_lwm2m_tlv:parse(Data),
+    R = emqx_lwm2m_tlv:parse(Data),
     Exp = [
             #{tlv_resource_with_value => 16#00, value => <<"Open Mobile Alliance">>},
             #{tlv_resource_with_value => 16#01, value => <<"Lightweight M2M Client">>},
             #{tlv_resource_with_value => 16#02, value => <<"345000123">>}
             ],
     ?assertEqual(Exp, R),
-    EncodedBinary = emq_lwm2m_tlv:encode(Exp),
+    EncodedBinary = emqx_lwm2m_tlv:encode(Exp),
     ?assertEqual(EncodedBinary, Data).
 
 case03_0(_Config) ->
     Data = <<16#87, 16#02, 16#41, 16#7F, 16#07, 16#61, 16#01, 16#36, 16#01>>,
-    R = emq_lwm2m_tlv:parse(Data),
+    R = emqx_lwm2m_tlv:parse(Data),
     Exp = [
         #{tlv_multiple_resource => 16#02, value => [
             #{tlv_resource_instance => 16#7F, value => <<16#07>>},
@@ -81,13 +81,13 @@ case03_0(_Config) ->
         ]}
     ],
     ?assertEqual(Exp, R),
-    EncodedBinary = emq_lwm2m_tlv:encode(Exp),
+    EncodedBinary = emqx_lwm2m_tlv:encode(Exp),
     ?assertEqual(EncodedBinary, Data).
 
 case04(_Config) ->
     % 6.4.3.1 Single Object Instance Request Example
     Data = <<16#C8, 16#00, 16#14, 16#4F, 16#70, 16#65, 16#6E, 16#20, 16#4D, 16#6F, 16#62, 16#69, 16#6C, 16#65, 16#20, 16#41, 16#6C, 16#6C, 16#69, 16#61, 16#6E, 16#63, 16#65, 16#C8, 16#01, 16#16, 16#4C, 16#69, 16#67, 16#68, 16#74, 16#77, 16#65, 16#69, 16#67, 16#68, 16#74, 16#20, 16#4D, 16#32, 16#4D, 16#20, 16#43, 16#6C, 16#69, 16#65, 16#6E, 16#74, 16#C8, 16#02, 16#09, 16#33, 16#34, 16#35, 16#30, 16#30, 16#30, 16#31, 16#32, 16#33, 16#C3, 16#03, 16#31, 16#2E, 16#30, 16#86, 16#06, 16#41, 16#00, 16#01, 16#41, 16#01, 16#05, 16#88, 16#07, 16#08, 16#42, 16#00, 16#0E, 16#D8, 16#42, 16#01, 16#13, 16#88, 16#87, 16#08, 16#41, 16#00, 16#7D, 16#42, 16#01, 16#03, 16#84, 16#C1, 16#09, 16#64, 16#C1, 16#0A, 16#0F, 16#83, 16#0B, 16#41, 16#00, 16#00, 16#C4, 16#0D, 16#51, 16#82, 16#42, 16#8F, 16#C6, 16#0E, 16#2B, 16#30, 16#32, 16#3A, 16#30, 16#30, 16#C1, 16#10, 16#55>>,
-    R = emq_lwm2m_tlv:parse(Data),
+    R = emqx_lwm2m_tlv:parse(Data),
     Exp = [
             #{tlv_resource_with_value => 16#00, value => <<"Open Mobile Alliance">>},
             #{tlv_resource_with_value => 16#01, value => <<"Lightweight M2M Client">>},
@@ -115,14 +115,14 @@ case04(_Config) ->
             #{tlv_resource_with_value => 16#10, value => <<"U">>}
           ],
     ?assertEqual(Exp, R),
-    EncodedBinary = emq_lwm2m_tlv:encode(Exp),
+    EncodedBinary = emqx_lwm2m_tlv:encode(Exp),
     ?assertEqual(EncodedBinary, Data).
 
 case05(_Config) ->
     % 6.4.3.2 Multiple Object Instance Request Examples
     %   A) Request on Single-Instance Object
     Data = <<16#08, 16#00, 16#79, 16#C8, 16#00, 16#14, 16#4F, 16#70, 16#65, 16#6E, 16#20, 16#4D, 16#6F, 16#62, 16#69, 16#6C, 16#65, 16#20, 16#41, 16#6C, 16#6C, 16#69, 16#61, 16#6E, 16#63, 16#65, 16#C8, 16#01, 16#16, 16#4C, 16#69, 16#67, 16#68, 16#74, 16#77, 16#65, 16#69, 16#67, 16#68, 16#74, 16#20, 16#4D, 16#32, 16#4D, 16#20, 16#43, 16#6C, 16#69, 16#65, 16#6E, 16#74, 16#C8, 16#02, 16#09, 16#33, 16#34, 16#35, 16#30, 16#30, 16#30, 16#31, 16#32, 16#33, 16#C3, 16#03, 16#31, 16#2E, 16#30, 16#86, 16#06, 16#41, 16#00, 16#01, 16#41, 16#01, 16#05, 16#88, 16#07, 16#08, 16#42, 16#00, 16#0E, 16#D8, 16#42, 16#01, 16#13, 16#88, 16#87, 16#08, 16#41, 16#00, 16#7D, 16#42, 16#01, 16#03, 16#84, 16#C1, 16#09, 16#64, 16#C1, 16#0A, 16#0F, 16#83, 16#0B, 16#41, 16#00, 16#00, 16#C4, 16#0D, 16#51, 16#82, 16#42, 16#8F, 16#C6, 16#0E, 16#2B, 16#30, 16#32, 16#3A, 16#30, 16#30, 16#C1, 16#10, 16#55>>,
-    R = emq_lwm2m_tlv:parse(Data),
+    R = emqx_lwm2m_tlv:parse(Data),
     Exp = [
         #{tlv_object_instance => 16#00, value => [
             #{tlv_resource_with_value => 16#00, value => <<"Open Mobile Alliance">>},
@@ -152,14 +152,14 @@ case05(_Config) ->
         ]}
     ],
     ?assertEqual(Exp, R),
-    EncodedBinary = emq_lwm2m_tlv:encode(Exp),
+    EncodedBinary = emqx_lwm2m_tlv:encode(Exp),
     ?assertEqual(EncodedBinary, Data).
 
 case06(_Config) ->
     % 6.4.3.2 Multiple Object Instance Request Examples
     %   B) Request on Multiple-Instances Object having 2 instances
     Data = <<16#08, 16#00, 16#0E, 16#C1, 16#00, 16#01, 16#C1, 16#01, 16#00, 16#83, 16#02, 16#41, 16#7F, 16#07, 16#C1, 16#03, 16#7F, 16#08, 16#02, 16#12, 16#C1, 16#00, 16#03, 16#C1, 16#01, 16#00, 16#87, 16#02, 16#41, 16#7F, 16#07, 16#61, 16#01, 16#36, 16#01, 16#C1, 16#03, 16#7F>>,
-    R = emq_lwm2m_tlv:parse(Data),
+    R = emqx_lwm2m_tlv:parse(Data),
     Exp = [
         #{tlv_object_instance => 16#00, value => [
             #{tlv_resource_with_value => 16#00, value => <<16#01>>},
@@ -180,14 +180,14 @@ case06(_Config) ->
         ]}
     ],
     ?assertEqual(Exp, R),
-    EncodedBinary = emq_lwm2m_tlv:encode(Exp),
+    EncodedBinary = emqx_lwm2m_tlv:encode(Exp),
     ?assertEqual(EncodedBinary, Data).
 
 case07(_Config) ->
     % 6.4.3.2 Multiple Object Instance Request Examples
     %   C) Request on Multiple-Instances Object having 1 instance only
     Data = <<16#08, 16#00, 16#0F, 16#C1, 16#00, 16#01, 16#C4, 16#01, 16#00, 16#01, 16#51, 16#80, 16#C1, 16#06, 16#01, 16#C1, 16#07, 16#55>>,
-    R = emq_lwm2m_tlv:parse(Data),
+    R = emqx_lwm2m_tlv:parse(Data),
     Exp = [
         #{tlv_object_instance => 16#00, value => [
             #{tlv_resource_with_value => 16#00, value => <<16#01>>},
@@ -196,14 +196,14 @@ case07(_Config) ->
             #{tlv_resource_with_value => 16#07, value => <<$U>>}]}
     ],
     ?assertEqual(Exp, R),
-    EncodedBinary = emq_lwm2m_tlv:encode(Exp),
+    EncodedBinary = emqx_lwm2m_tlv:encode(Exp),
     ?assertEqual(EncodedBinary, Data).
 
 case08(_Config) ->
     % 6.4.3.3 Example of Request on an Object Instance containing an Object Link Resource
     %   Example 1) request to Object 65 Instance 0: Read /65/0
     Data = <<16#88, 16#00, 16#0C, 16#44, 16#00, 16#00, 16#42, 16#00, 16#00, 16#44, 16#01, 16#00, 16#42, 16#00, 16#01, 16#C8, 16#01, 16#0D, 16#38, 16#36, 16#31, 16#33, 16#38, 16#30, 16#30, 16#37, 16#35, 16#35, 16#35, 16#30, 16#30, 16#C4, 16#02, 16#12, 16#34, 16#56, 16#78>>,
-    R = emq_lwm2m_tlv:parse(Data),
+    R = emqx_lwm2m_tlv:parse(Data),
     Exp = [
         #{tlv_multiple_resource => 16#00, value => [
             #{tlv_resource_instance => 16#00, value => <<16#00, 16#42, 16#00, 16#00>>},
@@ -213,14 +213,14 @@ case08(_Config) ->
         #{tlv_resource_with_value => 16#02, value => <<16#12345678:32>>}
     ],
     ?assertEqual(Exp, R),
-    EncodedBinary = emq_lwm2m_tlv:encode(Exp),
+    EncodedBinary = emqx_lwm2m_tlv:encode(Exp),
     ?assertEqual(EncodedBinary, Data).
 
 case09(_Config) ->
     % 6.4.3.3 Example of Request on an Object Instance containing an Object Link Resource
     %   Example 2) request to Object 66: Read /66: TLV payload will contain 2 Object Instances
     Data = <<16#08, 16#00, 16#26, 16#C8, 16#00, 16#0B, 16#6D, 16#79, 16#53, 16#65, 16#72, 16#76, 16#69, 16#63, 16#65, 16#20, 16#31, 16#C8, 16#01, 16#0F, 16#49, 16#6E, 16#74, 16#65, 16#72, 16#6E, 16#65, 16#74, 16#2E, 16#31, 16#35, 16#2E, 16#32, 16#33, 16#34, 16#C4, 16#02, 16#00, 16#43, 16#00, 16#00, 16#08, 16#01, 16#26, 16#C8, 16#00, 16#0B, 16#6D, 16#79, 16#53, 16#65, 16#72, 16#76, 16#69, 16#63, 16#65, 16#20, 16#32, 16#C8, 16#01, 16#0F, 16#49, 16#6E, 16#74, 16#65, 16#72, 16#6E, 16#65, 16#74, 16#2E, 16#31, 16#35, 16#2E, 16#32, 16#33, 16#35, 16#C4, 16#02, 16#FF, 16#FF, 16#FF, 16#FF>>,
-    R = emq_lwm2m_tlv:parse(Data),
+    R = emqx_lwm2m_tlv:parse(Data),
     Exp = [
         #{tlv_object_instance => 16#00, value => [
             #{tlv_resource_with_value => 16#00, value => <<"myService 1">>},
@@ -234,6 +234,6 @@ case09(_Config) ->
         ]}
     ],
     ?assertEqual(Exp, R),
-    EncodedBinary = emq_lwm2m_tlv:encode(Exp),
+    EncodedBinary = emqx_lwm2m_tlv:encode(Exp),
     ?assertEqual(EncodedBinary, Data).
 

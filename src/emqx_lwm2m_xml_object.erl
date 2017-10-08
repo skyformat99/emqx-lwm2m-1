@@ -14,11 +14,11 @@
 %% limitations under the License.
 %%--------------------------------------------------------------------
 
--module(emq_lwm2m_xml_object).
+-module(emqx_lwm2m_xml_object).
 
 -author("Feng Lee <feng@emqtt.io>").
 
--include("emq_lwm2m.hrl").
+-include("emqx_lwm2m.hrl").
 -include_lib("xmerl/include/xmerl.hrl").
 
 -export([get_obj_def/2, get_object_id/1, get_object_and_resource_id/2, get_resource_type/2]).
@@ -29,9 +29,9 @@
 % This module is for future use. Disabled now.
 
 get_obj_def(ObjectIdInt, true) ->
-    emq_lwm2m_xml_object_db:find_objectid(ObjectIdInt);
+    emqx_lwm2m_xml_object_db:find_objectid(ObjectIdInt);
 get_obj_def(ObjectNameStr, false) ->
-    emq_lwm2m_xml_object_db:find_name(ObjectNameStr).
+    emqx_lwm2m_xml_object_db:find_name(ObjectNameStr).
 
 
 
